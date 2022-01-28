@@ -97,7 +97,7 @@ We run again:
 python2 checker.py 10.10.10.40
 ```
 
-![image2](https://abusinglinux.com/assets/images/blue_htb/username_guest.PNG)<br>
+![image2](https://abusinglinux.com/assets/images/blue_htb/username_guest.png)<br>
 As we can see we have a bunch of pipes that reported OK. <br>
 
 
