@@ -74,7 +74,7 @@ So lets run:
 ```bash
 nmap --script "vuln and safe" -p445 10.10.10.40 -oN smbVulnerable
 ```
-![image1](https://abusinglinux.com/assets/images/blue_htb/nmap_scripts_output.png)
+![image1](../assets/images/blue-htb/nmap_scripts_output.png)
 BINGO! We can see in the picture the service is vulnerable
 
 2. Eternal blue checker <br>
