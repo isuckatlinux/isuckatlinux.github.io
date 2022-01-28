@@ -74,10 +74,11 @@ So lets run:
 ```bash
 nmap --script "vuln and safe" -p445 10.10.10.40 -oN smbVulnerable
 ```
-![image1](../assets/images/blue-htb/nmap_scripts_output.png)
+![image1](https://abusinglinux.com/assets/images/blue-htb/nmap_scripts_output.png)
+<br>
 BINGO! We can see in the picture the service is vulnerable
 
-2. Eternal blue checker <br>
+1. Eternal blue checker <br>
 We are going to use a [checker](https://github.com/worawit/MS17-010) 
 ```bash
 git clone https://github.com/worawit/MS17-010
@@ -97,7 +98,7 @@ We run again:
 python2 checker.py 10.10.10.40
 ```
 
-![image2](https://abusinglinux.com/assets/images/blue_htb/username_guest.png)<br>
+![image2](https://abusinglinux.com/assets/images/blue-htb/username_guest.PNG)<br>
 As we can see we have a bunch of pipes that reported OK. <br>
 
 
@@ -112,7 +113,7 @@ This exploit run a trivial command on the victim's machine. We are going to find
 The method we are going to edit is *smb_pwn*.<br>
 We are going to comment all lines of the code except the first one. And we are going to decomment the *service_exec* line <br>
 The code should look like this:<br>
-![image3](https://abusinglinux.com/assets/images/blue_htb/zzz_modified.PNG)
+![image3](https://abusinglinux.com/assets/images/blue-htb/zzz_modified.PNG)
 
 We are going to exploit this vulnerability by sharing a folder with smb witch contains [netcat](https://es.wikipedia.org/wiki/Netcat) and we are going to run netcat from the victims machine to produce a reverse shell.
 The command we have to inject is the next
