@@ -11,7 +11,8 @@ In this article we are going to cover different ways to get a reverse shell with
 
 Soon, in later articles we are going to be covering how to upgrade these shell's because these are not interactive, means, for example, that if we press TAB we won't get an autocompletion, we will just get a tabulation. 
 
-Also, a good practice before try to connect a reverse shell is try to test this RCE in order to don't confuse if the reverse shell got an error, beacuse we won't know if the problem is about the RCE or the shell.
+Also, a good practice before try to connect a reverse shell is try to test this RCE first create the shell.
+
 
 For the porpous of this post we are going to be using an Ubuntu FocalFossa machine from [osboxes.org ][osboxes]
 
