@@ -1,6 +1,7 @@
 ---
 layout: post
 title:  "Get reverse shell with RCE"
+tags: ['reverse-shell', 'pentest-basics']
 ---
 
 ## Introduction
