@@ -12,7 +12,7 @@ In this article we are going to cover different ways to get a reverse shell with
 Soon, in later articles we are going to be covering how to upgrade these shell's because these are not interactive, means, for example, that if we press TAB we won't get an autocompletion, we will just get a tabulation. 
 
 Also, a good practice before try to connect a reverse shell is try to test this RCE first create the shell.
-
+In this [article][test-rce] we cover how to test this.
 
 For the porpous of this post we are going to be using an Ubuntu FocalFossa machine from [osboxes.org ][osboxes]
 
@@ -93,3 +93,4 @@ We just to put the previusly encoded string into the $encode_string variable
 
 [osboxes]: https://www.osboxes.org/
 [rce]: https://www.n-able.com/blog/remote-code-execution
+[test-rce]: https://www.abusinglinux.com/2022/02/04/test-rce.html
