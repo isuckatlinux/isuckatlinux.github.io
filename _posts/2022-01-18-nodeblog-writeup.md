@@ -1,6 +1,6 @@
 ---
 layout: post
-comments: false
+comments: true
 title: "NodeBlog HTB Write Up"
 tags: ['hackthebox', 'writeup', 'nosqlinyection']
 ---
