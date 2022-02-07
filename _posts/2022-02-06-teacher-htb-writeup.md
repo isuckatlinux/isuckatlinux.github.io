@@ -6,7 +6,7 @@ tags: ['hackthebox', 'writeup', 'moodle']
 ---
 
 ## Introduction
-Hello everyone! Today we are going to be working on a HTB machine called Teacher. We will be practicing how to bruteforce some logins, also how to discover moodle version and how to attack an especific version of itself.
+Hello everyone! Today we are going to be working on a HTB machine called Teacher. We will be practicing how to bruteforce some logins, also how to discover moodle version and how to attack an especific version of itself. Also we are going to see how to exploit missconfigured crontab.
 
 
 ## Ports recognizement
@@ -77,7 +77,7 @@ So now, we have the a potential teacher's username (Giovanni) and a incomplete p
 
 We can build a simple python3 script in order to get the last character of the password.
 Here's the [script][python-script-bruteforce]
-Simple brute force sciprt which try three usernames (giovanni, Giovanni, giovanni@backhatuni.htb)
+It is a simple brute force script which try three usernames (giovanni, Giovanni, giovanni@backhatuni.htb)
 In case they were using private mail server.
 
 We got that the credentials are *giovanni:Th4C00lTheacha#*
@@ -141,7 +141,7 @@ python -c 'import pty; pty.spawn("/bin/bash")'
 
 ## Lateral movement
 
-If we list the users of the machine, we can see that giovanni is an user who's problably get the user flag.
+If we list the users of the machine, we can see that giovanni is an user who's problably have the user flag.
 We can try to grab it:
 ```bash
 cat /home/giovanni/user.txt
@@ -157,7 +157,7 @@ cat config.php
 
 We can see the system that is running the database(mariadb), and some credentiales for the database(root:Welkom1!)
 
-If we try to login yo mariadb
+If we try to login to mariadb
 ```bash
 mariadb -u root -p
 ```
