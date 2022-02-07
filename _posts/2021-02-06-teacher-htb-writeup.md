@@ -22,7 +22,7 @@ Now we can enummerate all the services that are running on the system.
 ```bash
 sudo nmap -sC -vvv -n -Pn -p80 --min-rate 10000 10.10.10.153 -oN services
 ```
-*services-photo*
+![services-photo](https://abusinglinux.com/assets/images/teacher-htb/services.png)
 
 
 ## Inspect the website
@@ -37,18 +37,20 @@ We can see a bunch of blurred pictures, so maybe we have to apply [steganography
 
 If we inspect the code we can notice that there is one picture that is slightly different than the other's.
 
-*images-photo*<br>
+![photo](https://abusinglinux.com/assets/images/teacher-htb/images_teacher.png)
+
 We are going to request that photo in order to see what's hiding.
 
 ```bash
 wget http://10.10.10.153/images/5.png -o fake_picture.png
 ```
-
+<br>
 If we try to see the picture:
 ```bash
 feh fake_picture.png
 ```
-*error-photo*
+
+![error-photo](https://abusinglinux.com/assets/images/teacher-htb/feh-error.png)
 
 We have an error that tell us that this picture is not actually a picture.
 We will try to enumerate his content:
@@ -106,7 +108,7 @@ This [blog][article-moodle] relate very well the vulnearability if you want to c
 If we look into the courses we can see there's only one course wich is already finished (Algebra).
 If we go into that course we can see a few resources into the course page.
 
-*algebra-image*
+![algebra-page](https://abusinglinux.com/assets/images/teacher-htb/algebrapage.png)
 
 We can click into the setting and then turn editing on.
 The we can add an activity or resource and we add a quiz.
