@@ -231,10 +231,34 @@ cat /home/giovanni/user.txt
 
 ## Pivilege excalation
 
+In the giovanni's workspace there are a few files. On one of them we can notice the timestamp of the file keep changing every minute so, we can deduce there is a cronjob replacing every minute the file.
 
+We can search for a filename called backup
+```bash
+find / -name "*backup*" 2> /dev/null
+```
 
+We see a bunch of files called backup
+There is one file called backup.sh
+We can inspect that file:
+```bash
+#!/bin/bash
+cd /home/giovanni/work;
+tar -czvf tmp/backup_courses.tar.gz courses/*;
+cd tmp;
+tar -xf backup_courses.tar.gz;
+chmod 777 * -R;
+```
 
+We can replace the course folder allocated at work with a symlink to /root.
+We have to wait a minute to the cronjob to take effect and all the content of root will be copied at our courses folder.
 
+We can grab the flag!
+```bash
+cat root.txt
+```
+
+To create the symbolic link:
 
 
 
