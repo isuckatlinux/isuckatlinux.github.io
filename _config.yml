@@ -8,6 +8,8 @@ description: > # this means to ignore newlines until "show_exerpts:"
   I hope you enjoy this blog as much as I do writting all this! <3
 show_excerpts: false # set to true to show excerpts on the homepage
 
+google_analytics: G-GYVLGVYG0P
+
 paginate: 5
 paginate_path: "/blog/page:num/"
 
