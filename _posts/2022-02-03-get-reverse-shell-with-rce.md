@@ -16,6 +16,10 @@ In this [article][test-rce] we cover how to test this.
 
 For the porpous of this post we are going to be using an Ubuntu FocalFossa machine from [osboxes.org ][osboxes]
 
+### Getting an interactive reverse shell with socat
+In this [post][socat] we cover how to get an interactive reverse shell with socat
+
+
 ## Concepts and notation
 In order to follow this post we have to make clear some concpets and notation.
 When we say $IP we mean the ip address of the attacker's machine. You can choose any port for $PORT, just remember have to be a number between 1 and 65,535. Also the port have to be free, no service have to be running. A common port used to reverse shell is 443
@@ -90,7 +94,7 @@ We just to put the previusly encoded string into the $encode_string variable
 
 
 
-
+[socat]:https://www.abusinglinux.com/2022/02/11/get-full-interactive-reverse-shell-with-socat.html
 [osboxes]: https://www.osboxes.org/
 [rce]: https://www.n-able.com/blog/remote-code-execution
 [test-rce]: https://www.abusinglinux.com/2022/02/04/test-rce.html

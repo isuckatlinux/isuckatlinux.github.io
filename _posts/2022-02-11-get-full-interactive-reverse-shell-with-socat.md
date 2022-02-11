@@ -13,6 +13,12 @@ A few adventages of use interactive shells are the next ones:
 - Autocompletation (Tabuation), in normal reverse shells tabulation just add a tabulation, in interactive shells tabs can autocomplete your code.
 
 ## Installing socat
+If we use security-based distros like Kali or Parrot, we should have socat installed, in any case, to install on the attacker's machine:
+In our system:
+```bash
+sudo apt install socat
+```
+
 Socat may not be installed in the victim's machine so we first we have to install it.<br>
 In this [repo][repo] we have a lot of binaries ready to be downloaded and executed, socat is one of this:
 ```bash
