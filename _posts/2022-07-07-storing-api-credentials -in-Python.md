@@ -34,12 +34,12 @@ In this post we are going to cover the most popular practices to handle sensitiv
 ## Good practices
 
 * Storing credentiales in plain text files: 
-    A better aproach for storing API credentials is creating a file with the user and password you need. If you are using git to develop your software the credential file name must be added to the *.gitignore* file. By doing this you will keep your credentials in a safer way. Keep in mind that this kind of workflow doesn't stop your credentials to be compromised if you get hacked.
+    A better aproach for storing API credentials is creating a file with the user and password you need. If we are using git to develop your software the credential file name must be added to the *.gitignore* file. By doing this you will keep your credentials in a safer way. Keep in mind that this kind of workflow doesn't stop our credentials to be compromised if we get hacked.
     In resume, this is a better way to work but not the safest at all.
 
 * Asking for the credentials in every execution: 
-    This is a really safe way to manage credentials. With the *getpass* python library you can get the credentials and save them into variables.
-    As you can guess this practice is as secure as inefficient. You would have to input the user and password every time which could be very tedious and unproductive.
+    This is a really safe way to manage credentials. With the *getpass* python library we can get the credentials and save them into variables.
+    As you can guess this practice is as secure as inefficient. We would have to input the user and password every time which could be very tedious and unproductive.
 
     ```python
     import getpass
@@ -60,12 +60,12 @@ In this post we are going to cover the most popular practices to handle sensitiv
         ```
     * On Windows: Follow this [link][windows_env_var]
     
-    In order to store the password into a variable you only have to run:
+    In order to store the password into a variable we only have to run:
     ```python
     import os
     password = os.getenv('API_PASSWORD')
     ```
-    The drawback of this method is that you will mess up your OS enviroment with variables that you are going to use only in a specifyc application/software.
+    The drawback of this method is that we will mess up your OS enviroment with variables that you are going to use only in a specifyc application/software.
      
 * Storing credentials in **.env** file:
     This method is similar to *Storing credentiales in plain text files*. We need to create an **.env** file with the creds:
@@ -105,7 +105,7 @@ If someone can get our user and password he will also get our API credentials. I
 
 * Hashing credentials: 
     Hashing is a simple way to secure the credentials.
-    Keep in mind that you can't hash-back the credentials so you will have to generate a hashed credentials file and then ask for them every execution, hashing them and compare to the file's ones.
+    Keep in mind that we can't hash-back the credentials so we will have to generate a hashed credentials file and then ask for them every execution, hashing them and compare to the file's ones.
     ```python
     from passlib.hash import bcrypt
     from getpass import getpass
@@ -179,9 +179,9 @@ If someone can get our user and password he will also get our API credentials. I
 
 ## Final thoughts
 
-Depending on the relevance of the data we want to protect we are going to use the suited method to store our API credentials. If our data is not very sensitive we can *store credentials on a text file* or use *keyring*. Those two methods are of extreme productivity and very easy to implement. On the other hand if our data is extremely sensitive we must hash/encrypt our API credentials. The method you need relys on your knowledge and responsability.
+Depending on the relevance of the data we want to protect we are going to use the suited method to store our API credentials. If our data is not very sensitive we can *store credentials on a text file* or use *keyring*. Those two methods are of extreme productivity and very easy to implement. On the other hand if our data is extremely sensitive we must hash/encrypt our API credentials. The method you need relies on your knowledge and responsibility.
 
-Thank's all for reading!
+Thanks all for reading!
 
 
 [windows_env_var]: https://docs.oracle.com/en/database/oracle/machine-learning/oml4r/1.5.1/oread/creating-and-modifying-environment-variables-on-windows.html#GUID-DD6F9982-60D5-48F6-8270-A27EC53807D0
